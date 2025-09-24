@@ -1,0 +1,99 @@
+{
+  "access": [
+    "public",
+    "interface",
+    "abstract",
+    "annotation"
+  ],
+  "annotations": [
+    {
+      "is_runtime_visible": true,
+      "type": "java/lang/annotation/Retention",
+      "values": {
+        "value": {
+          "type": "enum",
+          "value": {
+            "name": "RUNTIME",
+            "type": {
+              "kind": "class",
+              "name": "java/lang/annotation/RetentionPolicy"
+            }
+          }
+        }
+      }
+    },
+    {
+      "is_runtime_visible": true,
+      "type": "java/lang/annotation/Target",
+      "values": {
+        "value": {
+          "type": "array",
+          "value": [
+            {
+              "type": "enum",
+              "value": {
+                "name": "METHOD",
+                "type": {
+                  "kind": "class",
+                  "name": "java/lang/annotation/ElementType"
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "bootstrapmethods": [],
+  "enclosingmethod": null,
+  "fields": [],
+  "innerclasses": [],
+  "interfaces": [
+    {
+      "annotations": [],
+      "args": [],
+      "inner": null,
+      "name": "java/lang/annotation/Annotation"
+    }
+  ],
+  "methods": [
+    {
+      "access": [
+        "public",
+        "abstract"
+      ],
+      "annotations": [],
+      "code": null,
+      "default": null,
+      "exceptions": [],
+      "name": "value",
+      "params": [],
+      "returns": {
+        "annotations": [],
+        "type": {
+          "kind": "array",
+          "type": {
+            "annotations": [],
+            "args": [],
+            "inner": null,
+            "kind": "class",
+            "name": "jpamb/utils/Case"
+          }
+        }
+      },
+      "typeparams": []
+    }
+  ],
+  "name": "jpamb/utils/Cases",
+  "super": {
+    "annotations": [],
+    "args": [],
+    "inner": null,
+    "name": "java/lang/Object"
+  },
+  "typeparams": [],
+  "version": [
+    63,
+    0
+  ]
+}

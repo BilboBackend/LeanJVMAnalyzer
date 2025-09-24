@@ -1,0 +1,19 @@
+name = "LeanJVMAnalyzer"
+version = "0.1.0"
+defaultTargets = ["leanjvmanalyzer"]
+
+[[lean_lib]]
+name = "LeanJVMAnalyzer"
+
+[[lean_exe]]
+name = "leanjvmanalyzer"
+root = "Main"
+
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+
+# [[require]]
+# name = "Parser"
+# git = "https://github.com/fgdorais/lean4-parser"
+# rev = "main"
