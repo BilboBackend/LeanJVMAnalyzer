@@ -5,19 +5,20 @@ import Lean.Data.Json.Printer
 
 open Lean Json ToJson FromJson
 
-inductive BytecodeAccess where | Special | Virtual deriving ToJson, Repr 
+inductive BytecodeAccess where | Special | Virtual | Static | Other deriving ToJson, Repr 
 
 def bytecodeAccessFromJson (j : Json) : Except String BytecodeAccess :=
     match j with 
     | "special" => pure BytecodeAccess.Special
     | "virtual" => pure BytecodeAccess.Virtual
-    | _ => throw "Unknown bytecode access value"
+    | "static" => pure BytecodeAccess.Static
+    | e => throw s!"Unknown bytecode access value: {e}"
 
 instance instFromJsonBytecodeAccess : FromJson BytecodeAccess where
   fromJson? := bytecodeAccessFromJson 
 
 
-inductive BytecodeType where | Ref | TypeInt | TypeInteger | TypeBool deriving ToJson, Repr 
+inductive BytecodeType where | Ref | TypeInt | TypeInteger | TypeBool | TypeChar deriving ToJson, Repr 
 
 def bytecodeTypeFromJson (j : Json) : Except String BytecodeType :=
     match j with 
@@ -25,7 +26,8 @@ def bytecodeTypeFromJson (j : Json) : Except String BytecodeType :=
     | "int" => pure BytecodeType.TypeInt
     | "integer" => pure BytecodeType.TypeInteger
     | "boolean" => pure BytecodeType.TypeBool
-    | _ => throw "Unknown bytecode Type value"
+    | "char" => pure BytecodeType.TypeChar
+    | e => throw s!"Unknown bytecode Type value: {e}"
 
 instance instFromJsonBytecodeType : FromJson BytecodeType where
   fromJson? := bytecodeTypeFromJson 
@@ -42,13 +44,13 @@ def conditionFromJson (j : Json) : Except String Condition :=
     | "ge" => pure Condition.Ge 
     | "lt" => pure Condition.Lt 
     | "le" => pure Condition.Le
-    | _ => throw "Unknown conditional operator"
+    | e => throw s!"Unknown conditional operator {e}"
 
 instance instFromJsonCondition : FromJson Condition where
   fromJson? := conditionFromJson 
 
 
-inductive KindEnum where | Class | KindInt | KindChar | KindBool
+inductive KindEnum where | Class | Ref | KindInt | KindChar | KindBool | KindCharArr | KindIntArr | KindBoolArr
      deriving ToJson, Repr, BEq 
 
 def kindEnumFromJson (j : Json) : Except String KindEnum :=
@@ -58,20 +60,21 @@ def kindEnumFromJson (j : Json) : Except String KindEnum :=
     | "char" => pure KindEnum.KindChar 
     | "boolean" => pure KindEnum.KindBool
     | "class" => pure KindEnum.Class
-    | "ref" => pure KindEnum.Class 
-    | _ => throw "Unknown kind"
+    | "ref" => pure KindEnum.Ref 
+    | e => throw s!"Unknown kind: {e}"
 
 instance instFromJsonKindEnum : FromJson KindEnum where
   fromJson? := kindEnumFromJson 
 
-inductive BName where | DesiredAssertionStatus | Init
+inductive BName where | DesiredAssertionStatus | Init | ClInit
      deriving ToJson, Repr 
  
 def BNameFromJson (j : Json) : Except String BName :=
     match j with 
     | "<init>" => pure BName.Init
+    | "<clinit>" => pure BName.ClInit
     | "desiredAssertionStatus" => pure BName.DesiredAssertionStatus
-    | _ => throw "Unknown method name"
+    | e => throw s!"Unknown method name {e}"
 
 instance instFromJsonBName : FromJson BName where
   fromJson? := BNameFromJson 
@@ -81,22 +84,16 @@ structure  RefClass where
      name : String
      deriving ToJson, FromJson, Repr, BEq
 
-inductive ValueEnum where | ValClass (c : RefClass) | ValInt (i : Int) | ValChar (c : Int) | ValBool (b : Int)
+inductive ValueEnum where | ValClass (c : RefClass) | Ref (i : Nat) | ValInt (i : Int) | ValChar (c : Int) | ValBool (b : Int)
     deriving ToJson, Repr, BEq
 
-/- instance : Eq ValueEnum ValueEnum where -/
-/-     eq | ⟨.ValClass c⟩ ⟨.ValClass d⟩ => c == d    -/
-/-        | ⟨.ValChar c⟩ ⟨.ValChar d⟩ => c == d -/
-/-        | ⟨.ValInt i⟩ ⟨.ValInt j⟩ => i == j -/
-/-        | ⟨.ValBool i⟩ ⟨.ValBool j⟩ => i == j -/
-/-        | _ _ => False  -/
 
 def ValueEnumFromJson (j : Json) : Except String ValueEnum :=
-    match (FromJson.fromJson? j : Except _ Nat) with 
+    match (FromJson.fromJson? j : Except _ Int) with 
     | .ok i => .ok (.ValInt i)
     | .error _ => match (FromJson.fromJson? j : Except _ RefClass) with 
                     | .ok rc => .ok (.ValClass rc)
-                    | .error _ => throw "Failed to parse bytecode"
+                    | .error e => throw s!"Failed to parse bytecode {e}"
 
 instance instFromJsonValueEnum : FromJson ValueEnum where
   fromJson? := ValueEnumFromJson 
@@ -116,16 +113,6 @@ structure  Info where
      info : StackMapType --KindEnum
      deriving ToJson, FromJson, Repr 
 
-/- inductive StackMapType where | Same | SameLocals1_StackItemFrame -/
-/-      deriving ToJson, Repr  -/
-/- def StackMapTypeFromJson (j : Json) : Except String StackMapType := -/
-/-     match j with  -/
-/-     | "same" => pure StackMapType.Same -/
-/-     | "same_locals_1_stack_item_frame" => pure StackMapType.SameLocals1_StackItemFrame -/
-/-     | _ => throw "Unknown bytecode access value" -/
-/- instance instFromJsonStackMapType : FromJson StackMapType where -/
-/-   fromJson? := StackMapTypeFromJson  -/
-
 
 structure  StackMap where
      index : Int
@@ -141,30 +128,32 @@ structure Super where
      name : String
      deriving ToJson, FromJson, Repr 
  
-inductive Base where | BaseInt | Boolean deriving ToJson, Repr 
+inductive Base where | BaseInt | BaseBoolean | BaseChar | BaseNull deriving ToJson, Repr 
 
 def baseFromJson (j : Json) : Except String Base :=
     match j with 
-    | "boolean" => pure Base.Boolean 
-    | "int" => pure Base.BaseInt
-    | _ => throw "Unknown base value"
+    | "boolean" => pure .BaseBoolean 
+    | "int" => pure .BaseInt
+    | "char" => pure .BaseChar
+    | "null" => pure .BaseNull
+    | e => throw s!"Unknown base value: {e}"
 
 instance instFromJsonBase : FromJson Base where
   fromJson? := baseFromJson 
 
 structure  ReturnsType where
-     base : Base
+     base : Option Base
      deriving ToJson, FromJson, Repr 
  
 structure  Returns where
      annotations : Array String
-     returnsType : Option ReturnsType
+     returnsType : Option Base
      deriving ToJson, FromJson, Repr 
  
 
 structure  FieldType where
      annotations : Option (Array String)
-     base : Base
+     base : Option Base
      deriving ToJson, FromJson, Repr 
  
 structure  FieldElement where
@@ -188,7 +177,7 @@ def accessElemFromJson (j : Json) : Except String AccessElement :=
     match j with 
     | "public" => pure AccessElement.Public 
     | "static" => pure AccessElement.Static 
-    | _ => throw "Unknown access element value"
+    | e => throw s!"Unknown access element value: {e}"
 
 instance instFromJsonAccessElem : FromJson AccessElement where
   fromJson? := accessElemFromJson
@@ -200,7 +189,7 @@ def annotationTypeFromJson (j : Json) : Except String AnnotationType :=
     match j with 
     | "jpamb/utils/Case" => pure AnnotationType.JpambUtilsCase 
     | "jpamb/utils/Cases" => pure AnnotationType.JpambUtilsCases 
-    | _ => throw "Unknown annotation type."
+    | e => throw s!"Unknown annotation type: {e}" 
 
 instance instFromJsonAnnotationType : FromJson AnnotationType where
   fromJson? := annotationTypeFromJson
@@ -217,7 +206,7 @@ structure  AnnotationValues where
  
 structure  AnnotationElement where
      is_runtime_visible : Bool
-     type : AnnotationType
+     type : String --AnnotationType
      values : AnnotationValues
      deriving ToJson, FromJson, Repr 
 
@@ -253,19 +242,15 @@ structure  TentacledValue where
 
 end  
 
+abbrev InnerClassType := Json
+instance : Repr InnerClassType where 
+    reprPrec _ _ := "InnerClassType"
+
+
 structure  BytecodeValue where
      type : KindEnum
      value : ValueEnum 
      deriving ToJson, FromJson, Repr, BEq 
- 
-/- def BytecodeValueBEq (bv : BytecodeValue) : Bool := -/
-/-   match (bv.type, bv.value) with  -/
-/-   |(KindEnum.Class , ValueEnum.ValClass c) => String.beq -/
-/-   |(KindEnum.KindInt, ValueEnum.ValInteger i) => Int.beq -/
-/-   |(KindEnum.KindInteger,ValueEnum.ValInteger i) => Int.beq -/
-/- instance instBEqBytecodeValue : BEq BytecodeValue where  -/
-/-     beq := BytecodeValueBEq  -/
-
 
 
 structure  BytecodeField where
@@ -277,13 +262,13 @@ structure  BytecodeField where
 structure  BytecodeMethod where
      args : Array String
      is_interface : Option Bool
-     name : BName
+     name : String --BName
      ref : RefClass
      returns : Option Base
      deriving ToJson, FromJson, Repr 
  
 inductive Operation where
-  | Push | Load  | Invoke | Return | Ifz | New | Dup | Get | Throw | Binary | If | Goto | Put --Simple
+  | Push | Load  | Invoke | Return | Ifz | New | Dup | Get | Throw | Binary | If | Goto | Put | Incr | Store | ArrayStore | ArrayLoad | ArrayLength | NewArray | Cast
   deriving Repr, ToJson
 
 def OperationFromJson (j : Json) : Except String Operation :=
@@ -301,6 +286,13 @@ def OperationFromJson (j : Json) : Except String Operation :=
     | "if" => pure .If
     | "goto" => pure .Goto
     | "put" => pure .Put 
+    | "incr" => pure .Incr 
+    | "store" => pure .Store
+    | "array_store" => pure .ArrayStore
+    | "arraylength" => pure .ArrayLength
+    | "newarray" => pure .NewArray
+    | "array_load" => pure .ArrayLoad
+    | "cast" => pure .Cast
     | _ => throw "Unknown bytecode access value"
 
 instance instFromJsonOperation : FromJson Operation where
@@ -308,7 +300,7 @@ instance instFromJsonOperation : FromJson Operation where
  
 
 structure  Bytecode where
-     index : Option Int
+     index : Option Nat
      offset : Nat 
      opr : Operation 
      type : Option BytecodeType
@@ -323,6 +315,30 @@ structure  Bytecode where
      value : Option BytecodeValue
      operant : Option String
      deriving ToJson, FromJson, Repr 
+
+def skipNone {a : Type} [Repr a] : Option a -> String := 
+    fun x => match x with 
+             | none => "" 
+             | some v => reprStr v
+    
+-- Is it possible to make a type dependent version of the skipNone function
+/- instance : Repr Bytecode where  -/
+/-     reprPrec := fun bc => -/
+/-                     let access := skipNone bc.access -/
+/-                     let index := skipNone bc.index -/
+/-                     let offset := reprStr bc.offset -/
+/-                     let opr := reprStr bc.opr  -/
+/-                     let type := skipNone bc.type -/
+/-                     let method := skipNone bc.method  -/
+/-                     let field := skipNone bc.field -/
+/-                     let static := skipNone bc.static  -/
+/-                     let condition := skipNone bc.condition -/
+/-                     let target := skipNone bc.target  -/
+/-                     let classfmt := skipNone bc.class  -/
+/-                     let words := skipNone bc.words -/
+/-                     let value := skipNone bc.value  -/
+/-                     let operant := skipNone bc.operant -/
+/-                 fun _ => Std.Format.text (List.foldl (· ++ ", " ++ ·) "" [access,index,offset,opr,type,method,field,static, condition, target,classfmt,words,value,operant]) -/
     
 structure  Code where
      annotations : Array String
@@ -353,7 +369,7 @@ structure JPAMB where
      bootstrapmethods : Array String
      enclosingmethod : Option String
      fields : Array FieldElement
-     innerclasses : Array String
+     innerclasses : Array InnerClassType 
      interfaces : Array String
      methods : Array MethodElement
      name : String
@@ -377,14 +393,18 @@ instance : Repr JPAMBInfo where
 
 
 
+
+
+--------- Guards ------------- 
+
 def fieldtype1 := Json.parse r#"{"base": "int"}"#
-/-- info: Except.ok { annotations := none, base := Base.BaseInt } -/
+/-- info: Except.ok { annotations := none, base := some (Base.BaseInt) } -/
 #guard_msgs in
 #eval do return (FromJson.fromJson? (← IO.ofExcept  fieldtype1) : Except _ FieldType)
 
 def fieldtype2 := Json.parse r#"{"annotations": [], "base": "boolean"}"#
 
-/-- info: Except.ok { annotations := some #[], base := Base.Boolean } -/
+/-- info: Except.ok { annotations := some #[], base := some (Base.BaseBoolean) } -/
 #guard_msgs in
 #eval do return (FromJson.fromJson? (← IO.ofExcept  fieldtype2) : Except _ FieldType)
 
@@ -446,7 +466,7 @@ def annotationelem1 := Json.parse r#"{"is_runtime_visible": true,"type": "jpamb/
 
 /--
 info: Except.ok { is_runtime_visible := true,
-  type := AnnotationType.JpambUtilsCase,
+  type := "jpamb/utils/Case",
   values := { value := { type := "string", value := stickyvalue } } }
 -/
 #guard_msgs in
@@ -457,7 +477,7 @@ def annotationelem2 := Json.parse r#"{ "is_runtime_visible": true,"type": "jpamb
 
 /--
 info: Except.ok { is_runtime_visible := true,
-  type := AnnotationType.JpambUtilsCases,
+  type := "jpamb/utils/Cases",
   values := { value := { type := "array", value := stickyvalue } } }
 -/
 #guard_msgs in
@@ -474,7 +494,7 @@ def classbytecodeinner  := Json.parse r#"{"args": [],"is_interface": false,"name
 /--
 info: Except.ok { args := #[],
   is_interface := some false,
-  name := BName.Init,
+  name := "<init>",
   ref := { kind := KindEnum.Class, name := "java/lang/Object" },
   returns := none }
 -/
@@ -491,7 +511,7 @@ info: Except.ok { index := none,
   access := some (BytecodeAccess.Special),
   method := some { args := #[],
               is_interface := some false,
-              name := BName.Init,
+              name := "<init>",
               ref := { kind := KindEnum.Class, name := "java/lang/Object" },
               returns := none },
   field := none,

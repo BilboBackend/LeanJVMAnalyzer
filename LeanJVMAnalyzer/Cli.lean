@@ -9,7 +9,6 @@ inductive CliOption where | Info | JpambMethod (s : String)
 
 def validJpambMethod (s : String) : Bool := isValidDescriptor <| parseJVMDescriptor s
 
-#eval validJpambMethod r#"badinput"#
 
 def processInfo : IO Unit := IO.println (reprStr initinfo)
 
@@ -34,8 +33,21 @@ def printInterpreterResult (result : Except String String) : String :=
 
 def runInterpreter (jpamb : JPAMB) (m : String) (inputs : String) : IO Unit :=
   let method := parseJVMDescriptor m
-  let res:= interpret (initializeMethod jpamb method.methodname method.argtypes inputs) 10
-  IO.println <| printInterpreterResult res
+  let res:= interpret (initializeMethod jpamb method.methodname method.argtypes inputs) 30
+  do 
+    IO.println inputs 
+    IO.println <| reprStr method
+    IO.println <| printInterpreterResult res
+
+def runLogInterpreter (jpamb : JPAMB) (m : String) (inputs : String) : IO Unit :=
+  let method := parseJVMDescriptor m
+  let {log := logged, val := res}  := logInterpret (initializeMethod jpamb method.methodname method.argtypes inputs) 30
+  do 
+    IO.println inputs 
+    IO.println <| reprStr method
+    IO.println <| (reprStr logged)
+    IO.println <| printInterpreterResult res
+
 
 -- Call loginterpret: 
 --loginterpret ([], (initializeMethod jpamb method.methodname method.argtypes inputs)) 10
@@ -45,7 +57,7 @@ def processJpamb (m : String) (inputs : String) : IO Unit := do
                 |>.addExtension "json"
   let json ← IO.ofExcept <| Json.parse filepath
   let jpamb : JPAMB ← IO.ofExcept <| FromJson.fromJson? json 
-  runInterpreter jpamb m inputs
+  runLogInterpreter jpamb m inputs
 
 
 def parseArgs (args : List String) : IO Unit := 

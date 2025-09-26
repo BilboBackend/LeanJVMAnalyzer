@@ -1,5 +1,4 @@
 
-import LeanJVMAnalyzer
 import LeanJVMAnalyzer.JVMstructs
 import LeanJVMAnalyzer.Interpreter
 import LeanJVMAnalyzer.MethodParser
