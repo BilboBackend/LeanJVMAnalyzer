@@ -50,7 +50,7 @@ instance instFromJsonCondition : FromJson Condition where
   fromJson? := conditionFromJson 
 
 
-inductive KindEnum where | Class | Ref | KindInt | KindChar | KindBool | KindCharArr | KindIntArr | KindBoolArr
+inductive KindEnum where | Class | Ref | KindInt | KindChar | KindBool | KindCharArr | KindIntArr | KindBoolArr | DummyArrElem
      deriving ToJson, Repr, BEq 
 
 def kindEnumFromJson (j : Json) : Except String KindEnum :=
@@ -84,7 +84,7 @@ structure  RefClass where
      name : String
      deriving ToJson, FromJson, Repr, BEq
 
-inductive ValueEnum where | ValClass (c : RefClass) | Ref (i : Nat) | ValInt (i : Int) | ValChar (c : Int) | ValBool (b : Int)
+inductive ValueEnum where | ValClass (c : RefClass) | Class (s : String) | Ref (i : Nat) | ValInt (i : Int) | ValChar (c : Int) | ValBool (b : Int) | DummyArrElem
     deriving ToJson, Repr, BEq
 
 
@@ -264,7 +264,7 @@ structure  BytecodeMethod where
      is_interface : Option Bool
      name : String --BName
      ref : RefClass
-     returns : Option Base
+     returns : Option Json --Base
      deriving ToJson, FromJson, Repr 
  
 inductive Operation where
@@ -347,7 +347,7 @@ structure  Code where
      lines : Array Line
      max_locals : Int
      max_stack : Int
-     stack_map : Option (Array StackMap)
+     stack_map : Option StackMapType --(Array StackMap)
      deriving ToJson, FromJson, Repr 
  
 structure  MethodElement where

@@ -1,4 +1,6 @@
 import LeanJVMAnalyzer.JVMstructs
+import LeanJVMAnalyzer.InputParser 
+import Lean.Parser 
 
 open System
 
@@ -36,70 +38,47 @@ def getDescriptorPath (jvmd : JVMDescriptor) : System.FilePath :=
     System.mkFilePath jvmd.classpath 
 
 def matchInputType (i : String) : KindEnum :=
-  match i with 
-  |"I" =>  .KindInt
-  |"C" =>  .KindChar 
-  |"Z" =>  .KindBool
-  |"[I" => .KindIntArr
-  |"[Z" => .KindBoolArr 
-  |"[C" => .KindCharArr
-  |_ =>  .KindInt
+    match i with 
+    |"I" =>  .KindInt
+    |"C" =>  .KindChar 
+    |"Z" =>  .KindBool
+    |"[I" => .KindIntArr
+    |"[Z" => .KindBoolArr 
+    |"[C" => .KindCharArr
+    |_ =>  .KindInt
 
 
 def createBytecodeVals (types : List KindEnum) (inputs : List ValueEnum) : List BytecodeValue :=
-  List.zipWith (fun x y => BytecodeValue.mk x y) types inputs 
-
-/- def parseArrays (type : KindEnum) (input : List String): Array ValueEnum := -/
-/-     let array := List.takeWhile (· != "]") input  -/
-/-     let rest := List.dropWhile (· != "]") input -/
-/-     List.map  -/
+    List.zipWith (fun x y => BytecodeValue.mk x y) types inputs 
 
 def parseInputTypes (input: List String) : List KindEnum :=
-  match input with 
-  |(")"::_) => []
-  |("("::xs) => parseInputTypes xs
-  |("["::"I"::xs) => parseInputTypes xs
-  |("["::"Z"::xs) => parseInputTypes xs
-  |("["::"C"::xs) => parseInputTypes xs
-  |("I"::xs) => KindEnum.KindInt :: (parseInputTypes xs)
-  |("Z"::xs) => KindEnum.KindBool:: (parseInputTypes xs)
-  |("C"::xs) => KindEnum.KindChar :: (parseInputTypes xs)
-  |_ => []
+    match input with 
+    |(")"::_) => []
+    |("("::xs)
+    |(","::xs) => parseInputTypes xs
+    |("["::"I"::xs) => KindEnum.KindIntArr :: parseInputTypes xs
+    |("["::"Z"::xs) => KindEnum.KindBoolArr :: parseInputTypes xs
+    |("["::"C"::xs) => KindEnum.KindCharArr :: parseInputTypes xs
+    |("I"::xs) => KindEnum.KindInt :: (parseInputTypes xs)
+    |("Z"::xs) => KindEnum.KindBool:: (parseInputTypes xs)
+    |("C"::xs) => KindEnum.KindChar :: (parseInputTypes xs)
+    |_ => []
 
-def parseInputT (s : String) : List KindEnum := parseInputTypes (List.map (·.toString) s.toList)
 
-
-def parseInputHelp (s: String) : List String := 
-  let cleaninput := (s.toList.removeAll ['(',')']).foldl (· ++ toString · ) ""
-  cleaninput.splitOn ","
 
 -- Create an applicative functor to validate input
 def matchInputValue (kindval : KindEnum × String): BytecodeValue := 
-  match kindval with 
-  |(.KindInt, val) => BytecodeValue.mk .KindInt (.ValInt (val.toInt!))
-  |(.KindChar, char) => BytecodeValue.mk .KindInt (.ValChar (char.front.toNat))
-  |(.KindBool, "false") => BytecodeValue.mk .KindInt (.ValBool 0)
-  |(.KindBool, "true") => BytecodeValue.mk .KindInt (.ValBool 1)
-  |(_,val) =>  BytecodeValue.mk .KindInt (.ValInt (val.toNat!))
-  
+    match kindval with 
+    |(.KindInt, val) => BytecodeValue.mk .KindInt (.ValInt (val.toInt!))
+    |(.KindChar, char) => BytecodeValue.mk .KindInt (.ValChar (char.front.toNat))
+    |(.KindBool, "false") => BytecodeValue.mk .KindInt (.ValBool 0)
+    |(.KindBool, "true") => BytecodeValue.mk .KindInt (.ValBool 1)
+    |(_,val) =>  BytecodeValue.mk .KindInt (.ValInt (val.toNat!))
 
-def assignInput (types : List KindEnum) (inputs : String) : List BytecodeValue :=
-  let values := parseInputHelp inputs
-  let pairs := List.zip types values 
-  List.map matchInputValue pairs
-
-def initializeArgs (inputTypes : String) (inputs : String) : List BytecodeValue := 
-  assignInput (parseInputT inputTypes) inputs
-
-def extractCode (jpamb : JPAMB) (methodname : String) : Except String Code := 
-  match jpamb.methods.find? (·.name == methodname) with 
-  | none => throw s!"No method named {methodname} was found in the file"
-  | some x => pure x.code 
-
-
-
-
-
+/- def initializeArgs (inputs : String) : Array BytecodeValue :=  -/
+/-     match parseInput inputs with  -/
+/-     |some vals => vals  -/
+/-     |none => #[] -/
 
 
 
@@ -110,25 +89,13 @@ def extractCode (jpamb : JPAMB) (methodname : String) : Except String Code :=
 #eval isValidDescriptor <| parseJVMDescriptor "jpamb.Cases.Simple.assertFalse()V" 
 
 
-/-- info: ["12", "2", "3"] -/
-#guard_msgs in
-#eval parseInputHelp "(12,2,3)"
-
-
-/-- info: [{ type := KindEnum.KindInt, value := ValueEnum.ValInt 100 }] -/
-#guard_msgs in 
-#eval initializeArgs "(I)" "(100)"
-
 /--
-info: [{ type := KindEnum.KindInt, value := ValueEnum.ValInt 0 }, { type := KindEnum.KindInt, value := ValueEnum.ValInt 1 }]
+info: some [InputValue.InVal { type := KindEnum.KindInt, value := ValueEnum.ValInt 3 },
+ InputValue.InVal { type := KindEnum.KindInt, value := ValueEnum.ValInt 2 },
+ InputValue.InVal { type := KindEnum.KindInt, value := ValueEnum.ValInt 12 }]
 -/
-#guard_msgs in 
-#eval initializeArgs "(II)" "(0,1)"
-
-/-- info: [{ type := KindEnum.KindInt, value := ValueEnum.ValBool 0 }] -/
 #guard_msgs in
-#eval initializeArgs "(Z)" "(false)"
-
+#eval parseInput "(12,2,3)"
 
 
 /-- info: "V" -/
