@@ -81,11 +81,6 @@ def parseInput (s: String) : Option (List InputValue) :=
           List.foldlM (fun x y => y >>= fun k => k :: x) [] cvals
         else none
 
-#eval List.map parseValue <| splitTopLevel ("[I:".drop 3 |>.dropRight 1) ',' '[' ']'
-#eval parseArray "[I:]"
-#eval parseInput "([I:])"
-
- 
 /--
 info: some [InputValue.InArray
    #[{ type := KindEnum.KindInt, value := ValueEnum.ValInt 1 },

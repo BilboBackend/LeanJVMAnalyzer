@@ -1,6 +1,8 @@
 import LeanJVMAnalyzer.JVMstructs
 import Lean.Log
 
+def initinfo : JPAMBInfo := JPAMBInfo.mk "semantics" "1.0" "JSON Bourne" #["lean4", "dynamic","smallcheck"] "true"
+
 structure JVMFrame where 
   stack : List BytecodeValue 
   locals : Array BytecodeValue 
@@ -38,7 +40,6 @@ instance : Repr State where
                                                           
 
 
-def initinfo : JPAMBInfo := JPAMBInfo.mk "semantics" "1.0" "JSON Bourne" #["dynamic"] "true"
 
 def updateStackFrame (frame : JVMFrame) (state : State) : State :=
     let newstackframe := (state.frames.drop 1).insertIdx 0 frame

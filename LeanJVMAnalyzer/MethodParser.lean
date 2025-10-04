@@ -56,14 +56,16 @@ def parseInputTypes (input: List String) : List KindEnum :=
     |(")"::_) => []
     |("("::xs)
     |(","::xs) => parseInputTypes xs
-    |("["::"I"::xs) => KindEnum.KindIntArr :: parseInputTypes xs
-    |("["::"Z"::xs) => KindEnum.KindBoolArr :: parseInputTypes xs
-    |("["::"C"::xs) => KindEnum.KindCharArr :: parseInputTypes xs
+    |("["::"I"::":"::xs) => KindEnum.KindIntArr :: parseInputTypes xs
+    |("["::"Z"::":"::xs) => KindEnum.KindBoolArr :: parseInputTypes xs
+    |("["::"C"::":"::xs) => KindEnum.KindCharArr :: parseInputTypes xs
     |("I"::xs) => KindEnum.KindInt :: (parseInputTypes xs)
     |("Z"::xs) => KindEnum.KindBool:: (parseInputTypes xs)
     |("C"::xs) => KindEnum.KindChar :: (parseInputTypes xs)
     |_ => []
 
+def parseTypes (s : String) : List KindEnum :=
+    parseInputTypes <| s.toList.map toString
 
 
 -- Create an applicative functor to validate input
@@ -74,11 +76,6 @@ def matchInputValue (kindval : KindEnum × String): BytecodeValue :=
     |(.KindBool, "false") => BytecodeValue.mk .KindInt (.ValBool 0)
     |(.KindBool, "true") => BytecodeValue.mk .KindInt (.ValBool 1)
     |(_,val) =>  BytecodeValue.mk .KindInt (.ValInt (val.toNat!))
-
-/- def initializeArgs (inputs : String) : Array BytecodeValue :=  -/
-/-     match parseInput inputs with  -/
-/-     |some vals => vals  -/
-/-     |none => #[] -/
 
 
 
