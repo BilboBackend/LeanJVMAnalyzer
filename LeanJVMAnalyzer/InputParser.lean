@@ -82,47 +82,34 @@ def parseInput (s: String) : Option (List InputValue) :=
         else none
 
 /--
-info: some [InputValue.InArray
-   #[{ type := KindEnum.KindInt, value := ValueEnum.ValInt 1 },
-     { type := KindEnum.KindInt, value := ValueEnum.ValInt 2 }],
- InputValue.InVal { type := KindEnum.KindInt, value := ValueEnum.ValInt 1 }]
+info: some [InputValue.InArray #[ValueEnum.ValInt 1, ValueEnum.ValInt 2], InputValue.InVal ValueEnum.ValInt 1]
 -/
 #guard_msgs in 
 #eval parseInput "(1,[I:1,2])"
 
 /--
 info: some [InputValue.InArray
-   #[{ type := KindEnum.KindChar, value := ValueEnum.ValChar 104 },
-     { type := KindEnum.KindChar, value := ValueEnum.ValChar 101 },
-     { type := KindEnum.KindChar, value := ValueEnum.ValChar 108 },
-     { type := KindEnum.KindChar, value := ValueEnum.ValChar 108 },
-     { type := KindEnum.KindChar, value := ValueEnum.ValChar 111 }],
- InputValue.InVal { type := KindEnum.KindInt, value := ValueEnum.ValInt 1 }]
+   #[ValueEnum.ValChar 104, ValueEnum.ValChar 101, ValueEnum.ValChar 108, ValueEnum.ValChar 108, ValueEnum.ValChar 111],
+ InputValue.InVal ValueEnum.ValInt 1]
 -/
 #guard_msgs in
 #eval parseInput "(1,[C:'h','e','l','l','o'])"
 
-/--
-info: some [InputValue.InVal { type := KindEnum.KindInt, value := ValueEnum.ValInt 0 },
- InputValue.InVal { type := KindEnum.KindInt, value := ValueEnum.ValInt 0 }]
--/
+/-- info: some [InputValue.InVal ValueEnum.ValInt 0, InputValue.InVal ValueEnum.ValInt 0] -/
 #guard_msgs in
 #eval parseInput "(0, 0)"
-/-- info: some (InputValue.InVal { type := KindEnum.KindInt, value := ValueEnum.ValInt 1 }) -/
+/-- info: some (InputValue.InVal ValueEnum.ValInt 1) -/
 #guard_msgs in 
 #eval parseType "1"
 
-/-- info: some (InputValue.InVal { type := KindEnum.KindBool, value := ValueEnum.ValBool 1 }) -/
+/-- info: some (InputValue.InVal ValueEnum.ValBool 1) -/
 #guard_msgs in 
 #eval parseType "true"
 
-/-- info: some (InputValue.InVal { type := KindEnum.KindChar, value := ValueEnum.ValChar 65 }) -/
+/-- info: some (InputValue.InVal ValueEnum.ValChar 65) -/
 #guard_msgs in
 #eval parseType "'A'"
 
-/--
-info: some #[{ type := KindEnum.KindInt, value := ValueEnum.ValInt 1 },
-  { type := KindEnum.KindInt, value := ValueEnum.ValInt 2 }, { type := KindEnum.KindInt, value := ValueEnum.ValInt 3 }]
--/
+/-- info: some #[ValueEnum.ValInt 1, ValueEnum.ValInt 2, ValueEnum.ValInt 3] -/
 #guard_msgs in 
 #eval parseArray "[I:1,2,3]"

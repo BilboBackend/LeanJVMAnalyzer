@@ -87,9 +87,7 @@ def matchInputValue (kindval : KindEnum × String): BytecodeValue :=
 
 
 /--
-info: some [InputValue.InVal { type := KindEnum.KindInt, value := ValueEnum.ValInt 3 },
- InputValue.InVal { type := KindEnum.KindInt, value := ValueEnum.ValInt 2 },
- InputValue.InVal { type := KindEnum.KindInt, value := ValueEnum.ValInt 12 }]
+info: some [InputValue.InVal ValueEnum.ValInt 3, InputValue.InVal ValueEnum.ValInt 2, InputValue.InVal ValueEnum.ValInt 12]
 -/
 #guard_msgs in
 #eval parseInput "(12,2,3)"

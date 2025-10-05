@@ -252,6 +252,9 @@ structure  BytecodeValue where
      value : ValueEnum 
      deriving ToJson, FromJson, Repr, BEq 
 
+instance : Repr BytecodeValue where 
+  reprPrec := fun bc => let val := bc.value
+              fun _ => Std.Format.text (reprStr val)
 
 structure  BytecodeField where
      «class»: String
@@ -316,29 +319,32 @@ structure  Bytecode where
      operant : Option String
      deriving ToJson, FromJson, Repr 
 
+
+
 def skipNone {a : Type} [Repr a] : Option a -> String := 
     fun x => match x with 
-             | none => "" 
+             | none => ""
              | some v => reprStr v
     
 -- Is it possible to make a type dependent version of the skipNone function
-/- instance : Repr Bytecode where  -/
-/-     reprPrec := fun bc => -/
-/-                     let access := skipNone bc.access -/
-/-                     let index := skipNone bc.index -/
-/-                     let offset := reprStr bc.offset -/
-/-                     let opr := reprStr bc.opr  -/
-/-                     let type := skipNone bc.type -/
-/-                     let method := skipNone bc.method  -/
-/-                     let field := skipNone bc.field -/
-/-                     let static := skipNone bc.static  -/
-/-                     let condition := skipNone bc.condition -/
-/-                     let target := skipNone bc.target  -/
-/-                     let classfmt := skipNone bc.class  -/
-/-                     let words := skipNone bc.words -/
-/-                     let value := skipNone bc.value  -/
-/-                     let operant := skipNone bc.operant -/
-/-                 fun _ => Std.Format.text (List.foldl (· ++ ", " ++ ·) "" [access,index,offset,opr,type,method,field,static, condition, target,classfmt,words,value,operant]) -/
+instance : Repr Bytecode where 
+    reprPrec := fun bc =>
+                    let access := if skipNone bc.access == "" then "" else "Access: " ++ skipNone bc.access
+                    let index := if skipNone bc.index == "" then "" else "Index: " ++ skipNone bc.index
+                    let offset := "Offset: " ++ reprStr bc.offset
+                    let opr := "Operation: " ++ reprStr bc.opr 
+                    let type := if skipNone bc.type == "" then "" else "Type: " ++ skipNone bc.type
+                    let method := if skipNone bc.method == "" then "" else "Method: " ++ skipNone bc.method
+                    let field := if skipNone bc.field == "" then "" else "Field: " ++ skipNone bc.field
+                    let static := if skipNone bc.static == "" then "" else "Static: " ++ skipNone bc.static 
+                    let condition := if skipNone bc.condition == "" then "" else "Condition: " ++ skipNone bc.condition
+                    let target := if skipNone bc.target == "" then "" else "Target: " ++ skipNone bc.target 
+                    let classfmt := if skipNone bc.class == "" then "" else "Class: " ++ skipNone bc.class 
+                    let words := if skipNone bc.words == "" then "" else "Words: " ++ skipNone bc.words
+                    let value := if skipNone bc.value == "" then "" else "Value: " ++ skipNone bc.value
+                    let operant := if skipNone bc.operant == "" then "" else "Operant: " ++ skipNone bc.operant
+                    let fields := List.filter (· != "") [access,index,offset,opr,type,method,field,static, condition, target,classfmt,words,value,operant]
+                fun _ => Std.Format.text <| "{" ++ (List.foldl (· ++ ·) "" <| fields.intersperse ",\n     ") ++ "}"
     
 structure  Code where
      annotations : Array String
@@ -411,20 +417,10 @@ def fieldtype2 := Json.parse r#"{"annotations": [], "base": "boolean"}"#
 def bytecode1 := Json.parse r#"{"type": "int", "opr": "load", "offset": 0, "index": 0}"#
 
 /--
-info: Except.ok { index := some 0,
-  offset := 0,
-  opr := Operation.Load,
-  type := some (BytecodeType.TypeInt),
-  access := none,
-  method := none,
-  field := none,
-  static := none,
-  condition := none,
-  target := none,
-  class := none,
-  words := none,
-  value := none,
-  operant := none }
+info: Except.ok {Index: 0,
+     Offset: 0,
+     Operation: Operation.Load,
+     Type: BytecodeType.TypeInt}
 -/
 #guard_msgs in
 #eval do return (FromJson.fromJson? (← IO.ofExcept bytecode1) : Except _ Bytecode)
@@ -433,20 +429,9 @@ def code := Json.parse r#"{"annotations": [], "bytecode": [{"offset": 0,"opr": "
 
 /--
 info: Except.ok { annotations := #[],
-  bytecode := #[{ index := none,
-                  offset := 0,
-                  opr := Operation.Push,
-                  type := none,
-                  access := none,
-                  method := none,
-                  field := none,
-                  static := none,
-                  condition := none,
-                  target := none,
-                  class := none,
-                  words := none,
-                  value := some { type := KindEnum.KindInt, value := ValueEnum.ValInt 1 },
-                  operant := none }],
+  bytecode := #[{Offset: 0,
+                     Operation: Operation.Push,
+                     Value: ValueEnum.ValInt 1}],
   exceptions := #[],
   lines := #[{ line := 102, offset := 0 }],
   max_locals := 1,
@@ -504,55 +489,30 @@ info: Except.ok { args := #[],
 def classbytecode := Json.parse r#"{"access": "special","method": {"args": [],"is_interface": false,"name": "<init>","ref": {"kind": "class","name": "java/lang/Object"},"returns": null},"offset": 1,"opr": "invoke"}"#
 
 /--
-info: Except.ok { index := none,
-  offset := 1,
-  opr := Operation.Invoke,
-  type := none,
-  access := some (BytecodeAccess.Special),
-  method := some { args := #[],
-              is_interface := some false,
-              name := "<init>",
-              ref := { kind := KindEnum.Class, name := "java/lang/Object" },
-              returns := none },
-  field := none,
-  static := none,
-  condition := none,
-  target := none,
-  class := none,
-  words := none,
-  value := none,
-  operant := none }
+info: Except.ok {Access: BytecodeAccess.Special,
+     Offset: 1,
+     Operation: Operation.Invoke,
+     Method: { args := #[],
+  is_interface := some false,
+  name := "<init>",
+  ref := { kind := KindEnum.Class, name := "java/lang/Object" },
+  returns := none }}
 -/
 #guard_msgs in
 #eval do return (FromJson.fromJson? (← IO.ofExcept classbytecode): Except _ Bytecode) 
 
 def bytecodevalueclass := Json.parse r#"{"type": "class","value": {"kind": "class","name": "jpamb/cases/Simple"}}"#
 
-/--
-info: Except.ok { type := KindEnum.Class,
-  value := ValueEnum.ValClass { kind := KindEnum.Class, name := "jpamb/cases/Simple" } }
--/
+/-- info: Except.ok ValueEnum.ValClass { kind := KindEnum.Class, name := "jpamb/cases/Simple" } -/
 #guard_msgs in
 #eval do return (FromJson.fromJson? (← IO.ofExcept bytecodevalueclass): Except _ BytecodeValue)
 
 def refclassbytecode := Json.parse r#"{"offset": 0,"opr": "push","value": {"type": "class","value": {"kind": "class","name": "jpamb/cases/Simple"}}}"#
 
 /--
-info: Except.ok { index := none,
-  offset := 0,
-  opr := Operation.Push,
-  type := none,
-  access := none,
-  method := none,
-  field := none,
-  static := none,
-  condition := none,
-  target := none,
-  class := none,
-  words := none,
-  value := some { type := KindEnum.Class,
-             value := ValueEnum.ValClass { kind := KindEnum.Class, name := "jpamb/cases/Simple" } },
-  operant := none }
+info: Except.ok {Offset: 0,
+     Operation: Operation.Push,
+     Value: ValueEnum.ValClass { kind := KindEnum.Class, name := "jpamb/cases/Simple" }}
 -/
 #guard_msgs in
 #eval do return (FromJson.fromJson? (← IO.ofExcept refclassbytecode): Except _ Bytecode) 
