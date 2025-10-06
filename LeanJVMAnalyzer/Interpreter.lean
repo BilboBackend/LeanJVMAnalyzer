@@ -283,7 +283,7 @@ def stepStore (st : ExceptState) : ExceptState :=
                  |none => match frame.stack with 
                             |[] => throw "Stack is empty"
                             |(v::newstack) => let diff := ind - frame.locals.size 
-                                              let dummyval := BytecodeValue.mk KindEnum.DummyArrElem ValueEnum.DummyArrElem
+                                              let dummyval := BytecodeValue.mk KindEnum.Dummy ValueEnum.Dummy
                                               let arrend := (Array.replicate diff dummyval).push v
                                               let newframe := {frame with locals := frame.locals.append arrend, stack := newstack, pc := frame.pc + 1}
                                               pure <| updateStackFrame newframe s
@@ -337,7 +337,7 @@ def stepInvoke (st : ExceptState) (code : JPAMB) : ExceptState :=
 
 
 def createDummyArray (n : Nat) : Array BytecodeValue := 
-  let dummyval := BytecodeValue.mk KindEnum.DummyArrElem ValueEnum.DummyArrElem
+  let dummyval := BytecodeValue.mk KindEnum.Dummy ValueEnum.Dummy
   Array.replicate n dummyval
 
 def stepNewArray (st : ExceptState) : ExceptState :=

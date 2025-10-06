@@ -36,6 +36,7 @@ def runInterpreter (jpamb : JPAMB) (m : String) (inputstring : String) (limit : 
       IO.println <| s!"Method called: {reprStr method}"
       IO.println s!"With inputs:  {inputstring}"
       IO.println <| (reprStr logged)
+      IO.println <| s!"Ran a total of {logged.length} program counts!"
       IO.println <| printInterpreterResult res
 
 def loadFile (m : String) : IO String := do

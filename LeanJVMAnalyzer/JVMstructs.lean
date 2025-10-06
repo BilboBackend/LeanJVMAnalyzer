@@ -50,7 +50,7 @@ instance instFromJsonCondition : FromJson Condition where
   fromJson? := conditionFromJson 
 
 
-inductive KindEnum where | Class | Ref | KindInt | KindChar | KindBool | KindCharArr | KindIntArr | KindBoolArr | DummyArrElem
+inductive KindEnum where | Class | Ref | KindInt | KindChar | KindBool | KindCharArr | KindIntArr | KindBoolArr | Dummy
      deriving ToJson, Repr, BEq 
 
 def kindEnumFromJson (j : Json) : Except String KindEnum :=
@@ -84,7 +84,7 @@ structure  RefClass where
      name : String
      deriving ToJson, FromJson, Repr, BEq
 
-inductive ValueEnum where | ValClass (c : RefClass) | Class (s : String) | Ref (i : Nat) | ValInt (i : Int) | ValChar (c : Int) | ValBool (b : Int) | DummyArrElem
+inductive ValueEnum where | ValClass (c : RefClass) | Class (s : String) | Ref (i : Nat) | ValInt (i : Int) | ValChar (c : Int) | ValBool (b : Int) | Dummy
     deriving ToJson, Repr, BEq
 
 
