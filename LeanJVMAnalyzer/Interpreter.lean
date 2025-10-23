@@ -91,7 +91,7 @@ def initializeInputValue (st : Err State) (input : InputValue) (code : Code): Er
             let newframe := JVMFrame.mk [] #[newref] code 0 none --{f with stack := newref :: f.stack} 
             return {s with heap := s.heap.push (HeapElem.Arr arr)}.updateStackFrame newframe
         |.InVal v => 
-            return s.updateStackFrame JVMFrame.mk [] #[v] code 0 none --{f with stack := newref :: f.stack}
+            return s.updateStackFrame (JVMFrame.mk [] #[v] code 0 none) --{f with stack := newref :: f.stack}
 
 
 def initializeState (input : Option (List InputValue)) (code : Code) : Err State := 
