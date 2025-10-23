@@ -1,14 +1,13 @@
 import LeanJVMAnalyzer.Interpreter 
 import LeanJVMAnalyzer.MethodParser
 
-def getOffset (st : ExceptState) : Except String Nat :=
-    st >>= fun s => 
-    getFrame s >>= fun frame => 
-    getPCBytecode frame >>= fun bc => 
-    pure bc.offset 
+def getOffset (st : Err State) : Except String Nat := do
+    let s <- st 
+    let frame <- s.getFrame 
+    pure (← frame.bc).offset 
 
 
-def getTrace (log : List ExceptState) : List Nat :=
+def getTrace (log : List (Err State)) : List Nat :=
     log.map getOffset |>.filterMap (·.toOption)
 
 
