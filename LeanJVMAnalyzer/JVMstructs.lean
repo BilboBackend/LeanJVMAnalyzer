@@ -18,7 +18,7 @@ instance instFromJsonBytecodeAccess : FromJson BytecodeAccess where
   fromJson? := bytecodeAccessFromJson 
 
 
-inductive BytecodeType where | Ref | TypeInt | TypeInteger | TypeBool | TypeChar deriving ToJson, Repr 
+inductive BytecodeType where | Ref | TypeInt | TypeInteger | TypeBool | TypeChar | Null deriving ToJson, Repr 
 
 def bytecodeTypeFromJson (j : Json) : Except String BytecodeType :=
     match j with 
@@ -50,8 +50,9 @@ instance instFromJsonCondition : FromJson Condition where
   fromJson? := conditionFromJson 
 
 
-inductive KindEnum where | Class | Ref | KindInt | KindChar | KindBool | KindCharArr | KindIntArr | KindBoolArr | Dummy
+inductive KindEnum where | Class | Ref | KindInt | KindChar | KindBool | KindCharArr | KindIntArr | KindBoolArr | KindShort | Dummy
      deriving ToJson, Repr, BEq 
+
 
 def kindEnumFromJson (j : Json) : Except String KindEnum :=
     match j with 
@@ -59,6 +60,7 @@ def kindEnumFromJson (j : Json) : Except String KindEnum :=
     | "int" => pure KindEnum.KindInt 
     | "char" => pure KindEnum.KindChar 
     | "boolean" => pure KindEnum.KindBool
+    | "short" => pure KindEnum.KindShort
     | "class" => pure KindEnum.Class
     | "ref" => pure KindEnum.Ref 
     | e => throw s!"Unknown kind: {e}"
@@ -141,22 +143,22 @@ def baseFromJson (j : Json) : Except String Base :=
 instance instFromJsonBase : FromJson Base where
   fromJson? := baseFromJson 
 
-structure  ReturnsType where
+structure ReturnsType where
      base : Option Base
      deriving ToJson, FromJson, Repr 
  
-structure  Returns where
+structure Returns where
      annotations : Array String
      returnsType : Option Base
      deriving ToJson, FromJson, Repr 
  
 
-structure  FieldType where
+structure FieldType where
      annotations : Option (Array String)
      base : Option Base
      deriving ToJson, FromJson, Repr 
  
-structure  FieldElement where
+structure FieldElement where
      access : Array String
      annotations : Array String
      name : String
@@ -164,7 +166,7 @@ structure  FieldElement where
      value : Option String
      deriving ToJson, FromJson, Repr 
  
-structure  Param where
+structure Param where
      annotations : Array String
      type : FieldType
      visible : Bool
@@ -269,55 +271,171 @@ structure  BytecodeMethod where
      ref : RefClass
      returns : Option Json --Base
      deriving ToJson, FromJson, Repr 
- 
-inductive Operation where
-  | Push | Load  | Invoke | Return | Ifz | New | Dup | Get | Throw | Binary | If | Goto | Put | Incr | Store | ArrayStore | ArrayLoad | ArrayLength | NewArray | Cast
-  deriving Repr, ToJson
 
-def OperationFromJson (j : Json) : Except String Operation :=
-    match j with 
-    | "load" => pure .Load
-    | "push" => pure .Push 
-    | "invoke" => pure .Invoke             
-    | "return" => pure .Return
-    | "ifz" => pure .Ifz
-    | "new" => pure .New
-    | "dup" => pure .Dup
-    | "get" => pure .Get 
-    | "throw" => pure .Throw 
-    | "binary" => pure .Binary
-    | "if" => pure .If
-    | "goto" => pure .Goto
-    | "put" => pure .Put 
-    | "incr" => pure .Incr 
-    | "store" => pure .Store
-    | "array_store" => pure .ArrayStore
-    | "arraylength" => pure .ArrayLength
-    | "newarray" => pure .NewArray
-    | "array_load" => pure .ArrayLoad
-    | "cast" => pure .Cast
-    | _ => throw "Unknown bytecode access value"
+
+
+inductive Operation where
+  | Push (offset : Nat)  (value : Option BytecodeValue)
+  | Load (offset : Nat) (index : Nat)  (type :  BytecodeType)
+  | Invoke (offset : Nat) (access : BytecodeAccess) (method : BytecodeMethod)
+  | Return (offset : Nat) (type : Option BytecodeType)
+  | Ifz (offset : Nat) (condition : Condition) (target : Nat)
+  | New (offset : Nat) («class» : String)
+  | Dup (offset : Nat) (words : Int)
+  | Get (offset : Nat) (static : Bool) (field : BytecodeField)
+  | Throw (offset : Nat) 
+  | Binary (offset : Nat) (type : BytecodeType) (operant : String)  
+  | If (offset : Nat) (condition : Condition) (target : Nat)
+  | Goto (offset : Nat) (target : Nat)
+  | Put (offset : Nat) (static : Bool)
+  | Incr (offset : Nat) (index : Nat) (amount : Int)
+  | Store (offset : Nat) (index : Nat) (type : BytecodeType)
+  | ArrayStore (offset : Nat)  (type : BytecodeType)
+  | ArrayLoad (offset : Nat)  (type : BytecodeType)
+  | ArrayLength (offset : Nat) 
+  | NewArray (offset : Nat) (type : BytecodeType) (dim : Nat)
+  | Cast (offset : Nat) («from» : KindEnum) (to : KindEnum)
+     deriving ToJson, Repr 
+
+
+def LoadFromJson (j : Json) : Except String Operation := do
+    let index <- j.getObjVal? "index" >>= fun i => i.getNat? 
+    let offset <- j.getObjVal? "offset" >>= fun o => o.getNat?
+    let typejson <- j.getObjVal? "type"
+    let type <- fromJson? typejson
+    return .Load  offset index type
+
+def PushFromJson (j : Json) : Except String Operation := do
+    let offset <- j.getObjVal? "offset" >>= fun o => o.getNat?
+    let value <- fromJson? (← j.getObjVal? "value") 
+    return .Push offset value
+
+
+def InvokeFromJson (j : Json) : Except String Operation := do
+    let offset <- j.getObjVal? "offset" >>= fun o => o.getNat?
+    let access <- fromJson? (← j.getObjVal? "access")
+    let method <- fromJson? (← j.getObjVal? "method")
+    return .Invoke offset access method
+
+
+def ReturnFromJson (j : Json) : Except String Operation := do
+  let offset ← j.getObjVal? "offset" >>= fun o => o.getNat?
+  let type ← fromJson? (← j.getObjVal? "type")
+  return .Return offset type
+
+def IfzFromJson (j : Json) : Except String Operation := do
+  let offset ← j.getObjVal? "offset" >>= fun o => o.getNat?
+  let cond ← fromJson? (← j.getObjVal? "condition")
+  let target ← j.getObjVal? "target" >>= fun t => t.getNat?
+  return .Ifz offset cond target
+
+def NewFromJson (j : Json) : Except String Operation := do
+  let offset ← j.getObjVal? "offset" >>= fun o => o.getNat?
+  let cls ← j.getObjVal? "class" >>= fun c => c.getStr?
+  return .New offset cls
+
+def DupFromJson (j : Json) : Except String Operation := do
+  let offset ← j.getObjVal? "offset" >>= fun o => o.getNat?
+  let words ← j.getObjVal? "words" >>= fun w => w.getInt?
+  return .Dup offset words
+
+def GetFromJson (j : Json) : Except String Operation := do
+  let offset ← j.getObjVal? "offset" >>= fun o => o.getNat?
+  let static ← j.getObjVal? "static" >>= fun s => s.getBool?
+  let field ← fromJson? (← j.getObjVal? "field")
+  return .Get offset static field
+
+def ThrowFromJson (j : Json) : Except String Operation := do
+  let offset ← j.getObjVal? "offset" >>= fun o => o.getNat?
+  return .Throw offset
+
+def BinaryFromJson (j : Json) : Except String Operation := do
+  let offset ← j.getObjVal? "offset" >>= fun o => o.getNat?
+  let type ← fromJson? (← j.getObjVal? "type")
+  let operant ← j.getObjVal? "operant" >>= fun o => o.getStr?
+  return .Binary offset type operant
+
+def IfFromJson (j : Json) : Except String Operation := do
+  let offset ← j.getObjVal? "offset" >>= fun o => o.getNat?
+  let cond ← fromJson? (← j.getObjVal? "condition")
+  let target ← j.getObjVal? "target" >>= fun t => t.getNat?
+  return .If offset cond target
+
+def GotoFromJson (j : Json) : Except String Operation := do
+  let offset ← j.getObjVal? "offset" >>= fun o => o.getNat?
+  let target ← j.getObjVal? "target" >>= fun t => t.getNat?
+  return .Goto offset target
+
+def PutFromJson (j : Json) : Except String Operation := do
+  let offset ← j.getObjVal? "offset" >>= fun o => o.getNat?
+  let static ← j.getObjVal? "static" >>= fun s => s.getBool?
+  return .Put offset static
+
+def IncrFromJson (j : Json) : Except String Operation := do
+  let offset ← j.getObjVal? "offset" >>= fun o => o.getNat?
+  let index ← j.getObjVal? "index" >>= fun i => i.getNat?
+  let amount ← j.getObjVal? "amount" >>= fun a => a.getInt?
+  return .Incr offset index amount
+
+def StoreFromJson (j : Json) : Except String Operation := do
+  let offset ← j.getObjVal? "offset" >>= fun o => o.getNat?
+  let index ← j.getObjVal? "index" >>= fun i => i.getNat?
+  let type ← fromJson? (← j.getObjVal? "type")
+  return .Store offset index type
+
+def ArrayStoreFromJson (j : Json) : Except String Operation := do
+  let offset ← j.getObjVal? "offset" >>= fun o => o.getNat?
+  let type ← fromJson? (← j.getObjVal? "type")
+  return .ArrayStore offset type
+
+def ArrayLoadFromJson (j : Json) : Except String Operation := do
+  let offset ← j.getObjVal? "offset" >>= fun o => o.getNat?
+  let type ← fromJson? (← j.getObjVal? "type")
+  return .ArrayLoad offset type
+
+def ArrayLengthFromJson (j : Json) : Except String Operation := do
+  let offset ← j.getObjVal? "offset" >>= fun o => o.getNat?
+  return .ArrayLength offset
+
+def NewArrayFromJson (j : Json) : Except String Operation := do
+  let offset ← j.getObjVal? "offset" >>= fun o => o.getNat?
+  let type ← fromJson? (← j.getObjVal? "type")
+  let dim ← j.getObjVal? "dim" >>= fun d => d.getNat?
+  return .NewArray offset type dim
+
+def CastFromJson (j : Json) : Except String Operation := do
+  let offset ← j.getObjVal? "offset" >>= fun o => o.getNat?
+  let  «from» ← fromJson? (← j.getObjVal? "from")
+  let to ← fromJson? (← j.getObjVal? "to")
+  return .Cast offset «from» to
+
+def OperationFromJson (j : Json) : Except String Operation := do
+  let tag ← j.getObjVal? "opr" >>= fun s => s.getStr?
+  match tag with
+  | "push"        => PushFromJson j
+  | "load"        => LoadFromJson j
+  | "invoke"      => InvokeFromJson j
+  | "return"      => ReturnFromJson j
+  | "ifz"         => IfzFromJson j
+  | "new"         => NewFromJson j
+  | "dup"         => DupFromJson j
+  | "get"         => GetFromJson j
+  | "throw"       => ThrowFromJson j
+  | "binary"      => BinaryFromJson j
+  | "if"          => IfFromJson j
+  | "goto"        => GotoFromJson j
+  | "put"         => PutFromJson j
+  | "incr"        => IncrFromJson j
+  | "store"       => StoreFromJson j
+  | "array_store"  => ArrayStoreFromJson j
+  | "array_load"   => ArrayLoadFromJson j
+  | "arraylength" => ArrayLengthFromJson j
+  | "newarray"    => NewArrayFromJson j
+  | "cast"        => CastFromJson j
+  | other         => throw s!"Unknown operation type: {other}"
 
 instance instFromJsonOperation : FromJson Operation where
   fromJson? := OperationFromJson 
- 
-
-structure  Bytecode where
-     index : Option Nat
-     offset : Nat 
-     opr : Operation 
-     type : Option BytecodeType
-     access : Option BytecodeAccess
-     method : Option BytecodeMethod
-     field : Option BytecodeField
-     static : Option Bool
-     condition : Option Condition
-     target : Option Nat
-     «class» : Option String
-     words : Option Int
-     value : Option BytecodeValue
-     operant : Option String
-     deriving ToJson, FromJson, Repr 
 
 
 
@@ -326,29 +444,10 @@ def skipNone {a : Type} [Repr a] : Option a -> String :=
              | none => ""
              | some v => reprStr v
     
--- Is it possible to make a type dependent version of the skipNone function
-instance : Repr Bytecode where 
-    reprPrec := fun bc =>
-                    let access := if skipNone bc.access == "" then "" else "Access: " ++ skipNone bc.access
-                    let index := if skipNone bc.index == "" then "" else "Index: " ++ skipNone bc.index
-                    let offset := "Offset: " ++ reprStr bc.offset
-                    let opr := "Operation: " ++ reprStr bc.opr 
-                    let type := if skipNone bc.type == "" then "" else "Type: " ++ skipNone bc.type
-                    let method := if skipNone bc.method == "" then "" else "Method: " ++ skipNone bc.method
-                    let field := if skipNone bc.field == "" then "" else "Field: " ++ skipNone bc.field
-                    let static := if skipNone bc.static == "" then "" else "Static: " ++ skipNone bc.static 
-                    let condition := if skipNone bc.condition == "" then "" else "Condition: " ++ skipNone bc.condition
-                    let target := if skipNone bc.target == "" then "" else "Target: " ++ skipNone bc.target 
-                    let classfmt := if skipNone bc.class == "" then "" else "Class: " ++ skipNone bc.class 
-                    let words := if skipNone bc.words == "" then "" else "Words: " ++ skipNone bc.words
-                    let value := if skipNone bc.value == "" then "" else "Value: " ++ skipNone bc.value
-                    let operant := if skipNone bc.operant == "" then "" else "Operant: " ++ skipNone bc.operant
-                    let fields := List.filter (· != "") [access,index,offset,opr,type,method,field,static, condition, target,classfmt,words,value,operant]
-                fun _ => Std.Format.text <| "{" ++ (List.foldl (· ++ ·) "" <| fields.intersperse ",\n     ") ++ "}"
     
 structure  Code where
      annotations : Array String
-     bytecode : Array Bytecode
+     bytecode : Array Operation 
      exceptions : Array String
      lines : Array Line
      max_locals : Int
@@ -413,25 +512,11 @@ def fieldtype2 := Json.parse r#"{"annotations": [], "base": "boolean"}"#
 /-- info: Except.ok { annotations := some #[], base := some (Base.BaseBoolean) } -/
 #guard_msgs in
 #eval do return (FromJson.fromJson? (← IO.ofExcept  fieldtype2) : Except _ FieldType)
-
-def bytecode1 := Json.parse r#"{"type": "int", "opr": "load", "offset": 0, "index": 0}"#
-
-/--
-info: Except.ok {Index: 0,
-     Offset: 0,
-     Operation: Operation.Load,
-     Type: BytecodeType.TypeInt}
--/
-#guard_msgs in
-#eval do return (FromJson.fromJson? (← IO.ofExcept bytecode1) : Except _ Bytecode)
-
 def code := Json.parse r#"{"annotations": [], "bytecode": [{"offset": 0,"opr": "push","value": {"type": "integer","value": 1}}],"exceptions": [],"lines": [{"line": 102,"offset": 0}],"max_locals": 1,"max_stack": 3,"stack_map": null}"# 
 
 /--
 info: Except.ok { annotations := #[],
-  bytecode := #[{Offset: 0,
-                     Operation: Operation.Push,
-                     Value: ValueEnum.ValInt 1}],
+  bytecode := #[Operation.Push 0 (some ValueEnum.ValInt 1)],
   exceptions := #[],
   lines := #[{ line := 102, offset := 0 }],
   max_locals := 1,
@@ -489,17 +574,17 @@ info: Except.ok { args := #[],
 def classbytecode := Json.parse r#"{"access": "special","method": {"args": [],"is_interface": false,"name": "<init>","ref": {"kind": "class","name": "java/lang/Object"},"returns": null},"offset": 1,"opr": "invoke"}"#
 
 /--
-info: Except.ok {Access: BytecodeAccess.Special,
-     Offset: 1,
-     Operation: Operation.Invoke,
-     Method: { args := #[],
-  is_interface := some false,
-  name := "<init>",
-  ref := { kind := KindEnum.Class, name := "java/lang/Object" },
-  returns := none }}
+info: Except.ok (Operation.Invoke
+  1
+  (BytecodeAccess.Special)
+  { args := #[],
+    is_interface := some false,
+    name := "<init>",
+    ref := { kind := KindEnum.Class, name := "java/lang/Object" },
+    returns := none })
 -/
 #guard_msgs in
-#eval do return (FromJson.fromJson? (← IO.ofExcept classbytecode): Except _ Bytecode) 
+#eval do return (FromJson.fromJson? (← IO.ofExcept classbytecode): Except _ Operation) 
 
 def bytecodevalueclass := Json.parse r#"{"type": "class","value": {"kind": "class","name": "jpamb/cases/Simple"}}"#
 
@@ -510,11 +595,29 @@ def bytecodevalueclass := Json.parse r#"{"type": "class","value": {"kind": "clas
 def refclassbytecode := Json.parse r#"{"offset": 0,"opr": "push","value": {"type": "class","value": {"kind": "class","name": "jpamb/cases/Simple"}}}"#
 
 /--
-info: Except.ok {Offset: 0,
-     Operation: Operation.Push,
-     Value: ValueEnum.ValClass { kind := KindEnum.Class, name := "jpamb/cases/Simple" }}
+info: Except.ok (Operation.Push 0 (some ValueEnum.ValClass { kind := KindEnum.Class, name := "jpamb/cases/Simple" }))
 -/
 #guard_msgs in
-#eval do return (FromJson.fromJson? (← IO.ofExcept refclassbytecode): Except _ Bytecode) 
+#eval do return (FromJson.fromJson? (← IO.ofExcept refclassbytecode): Except _ Operation) 
+
+def returnbytecode := Json.parse r#"{"offset": 16,"opr": "return","type": null}"#
+
+/-- info: Except.ok (Operation.Return 16 none) -/
+#guard_msgs in
+#eval do return (FromJson.fromJson? (← IO.ofExcept returnbytecode): Except _ Operation) 
+
+
+def pushnull := Json.parse r#"{"offset": 0,"opr": "push","value": null}"#
+
+/-- info: Except.ok (Operation.Push 0 none) -/
+#guard_msgs in
+#eval do return (FromJson.fromJson? (← IO.ofExcept pushnull): Except _ Operation) 
+
+
+def bytecode1 := Json.parse r#"{"type": "int", "opr": "load", "offset": 0, "index": 0}"#
+
+/-- info: Except.ok (Operation.Load 0 0 (BytecodeType.TypeInt)) -/
+#guard_msgs in
+#eval do return (FromJson.fromJson? (← IO.ofExcept bytecode1) : Except _ Operation)
 
 

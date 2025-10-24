@@ -1,14 +1,13 @@
 import LeanJVMAnalyzer.Interpreter 
 import LeanJVMAnalyzer.MethodParser
 
-def getOffset (st : Err State) : Except String Nat := do
-    let s <- st 
-    let frame <- s.getFrame 
-    pure (← frame.bc).offset 
+/- def getOffset (st : Err State) : Except String Nat := do -/
+/-     let s <- st  -/
+/-     let frame <- s.getFrame  -/
+/-     pure (← frame.bc).offset  -/
 
-
-def getTrace (log : List (Err State)) : List Nat :=
-    log.map getOffset |>.filterMap (·.toOption)
+/- def getTrace (log : List (Err State)) : List Nat := -/
+/-     log.map getOffset |>.filterMap (·.toOption) -/
 
 
 def interleave : List α → List α → List α
@@ -31,9 +30,9 @@ def generateInput (kind: KindEnum) : List String :=
     |.KindInt => smallCheckInt 3
     |.KindBool => smallCheckBool 
     |.KindChar =>  ["c"]
-    |.KindIntArr => ["[I:1]","[I:]","[I:50, 100, 200]"]
-    |.KindBoolArr =>  ["[Z:true,false]"]
-    |.KindCharArr => ["[C:'h','e','l','l','o']","[C:]","[C: 'x'"]
+    |.KindIntArr => [] -- ["[I:1]","[I:]","[I:50, 100, 200]"]
+    |.KindBoolArr => ["[Z:true,false]"]
+    |.KindCharArr => [] --["[C:'h','e','l','l','o']","[C:]","[C: 'x'"]
     | _ => [""]
 
 def productConcat : List (List String) → List String

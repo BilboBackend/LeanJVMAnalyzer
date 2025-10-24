@@ -31,12 +31,15 @@ def runInterpreter (jpamb : JPAMB) (m : String) (inputstring : String) (limit : 
     let method := parseJVMDescriptor m
     let inputs := parseInput inputstring
     let init := initializeMethod jpamb method.methodname inputs
-    let {log := logged, val := res} := if logging then logInterpret init jpamb limit else {log := [], val := interpret init jpamb limit}
+    let {log := logged, val := res} := 
+        if logging 
+        then logInterpret init jpamb limit 
+        else {log := [], val := interpret init jpamb limit}
     do 
       IO.println <| s!"Method called: {reprStr method}"
       IO.println s!"With inputs:  {inputstring}"
       IO.println <| (reprStr logged)
-      IO.println <| s!"Ran a total of {logged.length} program counts!"
+      --IO.println <| s!"Ran a total of {logged.length} program counts!"
       IO.println <| printInterpreterResult res
 
 def loadFile (m : String) : IO String := do
@@ -55,23 +58,21 @@ def processJpamb (m : String) (inputs : String) : IO Unit := do
 
 def scoreMethod (jpamb : JPAMB) (method: JVMDescriptor) (inputs : List String) : IO Unit := do
     let input := inputs.map parseInput
-    let refscore := if input.all (·.isSome) then "50" else "0"
+    let (inputbool,refscore) := if input.all (·.isSome) then (true,"50") else (false,"50")
     let inits := input.map (fun i => initializeMethod jpamb method.methodname i)
     let results := inits.map (fun init => interpret init jpamb 200) 
-    IO.println <| reprStr <| results.foldl updateScore (standardScore refscore)
+    if inputbool 
+    then IO.println <| reprStr <| results.foldl updateScore (standardScore refscore)
+    else IO.println <| reprStr <| results.foldl updateScoreVoid (standardScore refscore)
+    
 
 def runDynamic (m : String) : IO Unit := do 
     let filepath ← loadFile m 
     let json ← IO.ofExcept <| Json.parse filepath
     let jpamb : JPAMB ← IO.ofExcept <| FromJson.fromJson? json 
     let method := parseJVMDescriptor m
-    --IO.println <| reprStr method
     let inputs := generateInputs method.argtypes
     scoreMethod jpamb method inputs
-    /- match method.argtypes with   -/
-    /- |"[I" -/
-    /- |"[C" => IO.println <| reprStr (standardScore "50") -/
-    /- |_ => scoreMethod jpamb method inputs -/
 
 /- def runDynamicCoverage (m : String) (limit : Nat) : IO Unit := do  -/
 /-     let filepath ← loadFile m  -/
