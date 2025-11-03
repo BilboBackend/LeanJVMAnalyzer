@@ -24,7 +24,6 @@ def smallCheckInt (d : Nat) : List String :=
 def smallCheckBool : List String := ["true","false"]
 
 
---def generateArray (kind: KindEnum) : 
 def generateInput (kind: KindEnum) : List String :=
     match kind with 
     |.KindInt => smallCheckInt 3
@@ -51,6 +50,15 @@ def generateInputs (s : String) : List String :=
     let prod := productConcat inputs
     prod.map (s!"({·})" )
 
+
+
+
+
+
+
+
+
+------- Tests ----------
 
 /--
 info: ["(-2,-2)", "(-2,2)", "(-2,-1)", "(-2,1)", "(-2,0)", "(2,-2)", "(2,2)", "(2,-1)", "(2,1)", "(2,0)", "(-1,-2)", "(-1,2)",

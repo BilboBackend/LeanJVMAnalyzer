@@ -26,12 +26,12 @@ def updateScore (scores : ErrorGuess) (st : Except String String) : ErrorGuess :
     |.error s
     |.ok s => 
         match s with 
-        |"divide by zero" => ErrorGuess.mk <| scores.values.insert s "75"
-        |"assertion error" => ErrorGuess.mk <| scores.values.insert s "75"
+        |"null pointer" => ErrorGuess.mk <| scores.values.insert s "100"
+        |"out of bounds" => ErrorGuess.mk <| scores.values.insert s "100"
+        |"ok" => ErrorGuess.mk <| scores.values.insert s "90" 
         |"*" => ErrorGuess.mk <| scores.values.insert s "75"
-        |"ok" => ErrorGuess.mk <| scores.values.insert s "75" 
-        |"out of bounds" => ErrorGuess.mk <| scores.values.insert s "75"
-        |"null pointer" => ErrorGuess.mk <| scores.values.insert s "75"
+        |"assertion error" => ErrorGuess.mk <| scores.values.insert s "100"
+        |"divide by zero" => ErrorGuess.mk <| scores.values.insert s "100"
         |_ => scores
      
 

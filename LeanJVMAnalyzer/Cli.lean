@@ -9,10 +9,7 @@ open Lean
 
 inductive CliOption where | Info | JpambMethod (s : String)
 
-def validJpambMethod (s : String) : Bool := isValidDescriptor <| parseJVMDescriptor s
-
-def processInfo : IO Unit := IO.println (reprStr initinfo)
-
+def printInfo : IO Unit := IO.println (reprStr initinfo)
 
 def exceptToString (val : Except String JVMFrame) : String :=
     match val with 
@@ -22,83 +19,75 @@ def exceptToString (val : Except String JVMFrame) : String :=
 def printLog (log: List (Except String JVMFrame)) : String :=
     List.foldl (· ++ exceptToString ·) "" log
 
-def printInterpreterResult (result : Except String String) : String :=
+def printResult (result : Except String String) : IO Unit :=
     match result with 
-    | .ok r => r 
-    | .error e => e 
+    | .ok e
+    | .error e => IO.println e 
 
-def runInterpreter (jpamb : JPAMB) (m : String) (inputstring : String) (limit : Nat) (logging : Bool) : IO Unit :=
-    let method := parseJVMDescriptor m
-    let inputs := parseInput inputstring
-    let init := initializeMethod jpamb method.methodname inputs
+
+def parseInputs (methodstr : String) (inputstr : String) : Method × (Option (List InputValue)) :=
+    let method := parseMethod methodstr
+    let inputs := parseInput inputstr
+    (method, inputs) 
+
+
+def runInterpreter (jpamb : JPAMB) (method: Method) (input : Option (List InputValue)) (limit : Nat) (logging : Bool) : List (Err State) × Except String String  := 
+    let init := initializeMethod jpamb method.name input
     let {log := logged, val := res} := 
         if logging 
         then logInterpret init jpamb limit 
         else {log := [], val := interpret init jpamb limit}
-    do 
-      IO.println <| s!"Method called: {reprStr method}"
-      IO.println s!"With inputs:  {inputstring}"
-      IO.println <| (reprStr logged)
-      --IO.println <| s!"Ran a total of {logged.length} program counts!"
-      IO.println <| printInterpreterResult res
-
-def loadFile (m : String) : IO String := do
-    let filepath ← IO.FS.readFile <| .toString 
-                  <| System.mkFilePath ("decompiled" :: (parseJVMDescriptor m).classpath) 
-                  |>.addExtension "json"
-    return filepath
+    (logged,res)
 
 
-def processJpamb (m : String) (inputs : String) : IO Unit := do
-    let filepath ← loadFile m 
-    let json ← IO.ofExcept <| Json.parse filepath
+
+def evaluateMethod (method : Method) (input : Option (List InputValue)) (logging: Bool) : IO (Except String String) := do
+    let file ← method.loadFile
+    let json ← IO.ofExcept <| Json.parse file
     let jpamb : JPAMB ← IO.ofExcept <| FromJson.fromJson? json 
-    runInterpreter jpamb m inputs 200 true
+    let (log, res) := runInterpreter jpamb method input 1000 logging 
+    if logging then IO.println <| reprStr log 
+    return res
 
+def scoreResults (results : List (Except String String)) (is_void_method : Bool): ErrorGuess := 
+    let std_score := if is_void_method then "0" else "50"
+    let init_score := standardScore std_score
+    if is_void_method
+    then List.foldl (fun curr_score res => updateScore curr_score res) init_score results
+    else List.foldl (fun curr_score res => updateScoreVoid curr_score res) init_score results
 
-def scoreMethod (jpamb : JPAMB) (method: JVMDescriptor) (inputs : List String) : IO Unit := do
-    let input := inputs.map parseInput
-    let (inputbool,refscore) := if input.all (·.isSome) then (true,"50") else (false,"50")
-    let inits := input.map (fun i => initializeMethod jpamb method.methodname i)
-    let results := inits.map (fun init => interpret init jpamb 200) 
-    if inputbool 
-    then IO.println <| reprStr <| results.foldl updateScore (standardScore refscore)
-    else IO.println <| reprStr <| results.foldl updateScoreVoid (standardScore refscore)
     
+def runDynamic (method : Method) (logging : Bool) : IO Unit := do 
+    let inputstrs := generateInputs method.argtypes
+    let inputs := inputstrs.map parseInput 
+    let is_void := if method.argtypes == "" then true else false
+    let results :=
+        match method.argtypes with  
+        |"[I"
+        |"[C" => pure []
+        |"" => inputs.mapM (fun inputstr => evaluateMethod method inputstr logging)
+        |_ => inputs.mapM (fun inputstr => evaluateMethod method inputstr logging)
+    IO.println <| reprStr <| scoreResults (← results) is_void
 
-def runDynamic (m : String) : IO Unit := do 
-    let filepath ← loadFile m 
-    let json ← IO.ofExcept <| Json.parse filepath
-    let jpamb : JPAMB ← IO.ofExcept <| FromJson.fromJson? json 
-    let method := parseJVMDescriptor m
-    let inputs := generateInputs method.argtypes
-    scoreMethod jpamb method inputs
 
-/- def runDynamicCoverage (m : String) (limit : Nat) : IO Unit := do  -/
-/-     let filepath ← loadFile m  -/
-/-     let json ← IO.ofExcept <| Json.parse filepath -/
-/-     let jpamb : JPAMB ← IO.ofExcept <| FromJson.fromJson? json  -/
-/-     let method := parseJVMDescriptor m -/
-/-     --IO.println <| reprStr method -/
-/-     let inputs := generateInputs method.argtypes -/
-/-     match method.argtypes with   -/
-/-     |"[I" -/
-/-     |"[C" => IO.println <| reprStr standardScore  -/
-/-     |_ => scoreMethod jpamb method inputs -/
 
 def parseArgs (args : List String) : IO Unit := 
     match args with 
-    | [] => IO.println "No input given"
-    | ["info"] => processInfo
-    | x::[] => do
-              if validJpambMethod x
-              then do 
-                    runDynamic x
-              else IO.println "Invalid arguments"
-    | classp::inputs::_ => do
-          match validJpambMethod classp with 
-          | true => (processJpamb classp inputs)
-          | false => do 
-                    IO.println "Invalid arguments"
-                    IO.println <| classp ++ " " ++ inputs
+    | [] => println! "No input given"
+    | ["info"] => printInfo
+    | methodstr::[] => do
+        let method := parseMethod methodstr 
+        if method.isValid 
+        then do 
+            runDynamic method true
+        else println! "Invalid method argument"
+    | methodstr::inputstr::_ => do
+        let (method,input) := parseInputs methodstr inputstr
+        if method.isValid
+        then 
+            let res := evaluateMethod method input false
+            printResult (← res)
+        else
+            println! "Invalid arguments"
+            println! methodstr ++ " " ++ inputstr
 

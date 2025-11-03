@@ -5,6 +5,19 @@ def initinfo : JPAMBInfo := JPAMBInfo.mk "semantics" "1.0" "JSON Bourne" #["lean
 
 abbrev Err := Except String 
 
+class Arithmetic (α : Type u) extends Add α, Mul α, Sub α, Div α, Mod α  where 
+
+
+structure GenFrame (α : Type u) [Arithmetic α] where 
+  stack : List v 
+  locals : Array v 
+  code : Code 
+  pc : Nat 
+  status : Option String
+
+--class Stateful where 
+ 
+
 structure JVMFrame where 
   stack : List BytecodeValue 
   locals : Array BytecodeValue 
@@ -220,13 +233,13 @@ def stepReturn (s : State) (type : Option BytecodeType): Err State := do
         | some f => return newstackframe.updateStackFrame (f.stackPush v |> .incrpc)
     | (_,_) => throw s!"Cannot return on operation"
 
-def simpleArithmetic (v1 : Int) (v2 : Int) (operant : String) : Except String BytecodeValue := 
+def genericArithmetic [Arithmetic α] (v1 : α) (v2 : α) (operant : String) : Except String α  := 
     match operant with 
-    | "add" => return ⟨.KindInt, .ValInt (v1 + v2)⟩ 
-    | "sub" => return ⟨.KindInt, .ValInt (v1 - v2)⟩ 
-    | "mul" => return ⟨.KindInt, .ValInt (v1 * v2)⟩
-    | "rem" => return ⟨.KindInt, .ValInt (v1 % v2)⟩
-    | "div" => if v2 == 0 then throw "divide by zero" else return ⟨.KindInt, .ValInt (v1 / v2)⟩ 
+    | "add" => return Arithmetic.add v1 v2
+    | "sub" => return Arithmetic.sub v1 v2
+    | "mul" => return Arithmetic.mul v1 v2
+    | "rem" => return Arithmetic.rem v1 v2
+    | "div" => return Arithmetic.div v1 v2
     | o => throw s!"Undefined arithmetic operant {o}"
     
 
@@ -236,7 +249,7 @@ def stepBinary (s : State) (type: BytecodeType) (opr: String)  : Err State := do
     | v2::v1::rest =>  
         match (v2.value,v1.value) with 
         | (.ValInt i2, .ValInt i1) => 
-            let v <- simpleArithmetic i1 i2 opr
+            let v <- genericArithmetic i1 i2 opr
             let newframe := {frame with stack := rest}.stackPush v |> .incrpc 
             return s.updateStackFrame newframe 
         | (s1,s2) => throw s!"Binary arithmetic not supported for {reprStr s1} and {reprStr s2}"
@@ -412,7 +425,7 @@ def step (st : Err State) (code : JPAMB) : Err State := do
 
 -- Limit is set in the counter
 def interpret (state : Err State) (code : JPAMB) (counter : Nat) : Except String String := do
-    if counter > 0
+    if counter > 0 
     then interpret (step state code) code (counter - 1) 
     else throw "*"
 
