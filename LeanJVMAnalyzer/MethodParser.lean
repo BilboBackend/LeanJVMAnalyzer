@@ -71,8 +71,6 @@ def matchInputType (i : String) : KindEnum :=
     |_ =>  .KindInt
 
 
-def createBytecodeVals (types : List KindEnum) (inputs : List ValueEnum) : List BytecodeValue :=
-    List.zipWith (fun x y => BytecodeValue.mk x y) types inputs 
 
 def parseInputTypes (input: List String) : List KindEnum :=
     match input with 
@@ -94,11 +92,11 @@ def parseTypes (s : String) : List KindEnum :=
 -- Create an applicative functor to validate input
 def matchInputValue (kindval : KindEnum × String): BytecodeValue := 
     match kindval with 
-    |(.KindInt, val) => BytecodeValue.mk .KindInt (.ValInt (val.toInt!))
-    |(.KindChar, char) => BytecodeValue.mk .KindInt (.ValChar (char.front.toNat))
-    |(.KindBool, "false") => BytecodeValue.mk .KindInt (.ValBool 0)
-    |(.KindBool, "true") => BytecodeValue.mk .KindInt (.ValBool 1)
-    |(_,val) =>  BytecodeValue.mk .KindInt (.ValInt (val.toNat!))
+    |(.KindInt, val) => ⟨.ValInt (val.toInt!)⟩ 
+    |(.KindChar, char) => ⟨.ValChar char.front.toNat⟩ 
+    |(.KindBool, "false") => ⟨ .ValBool 0⟩ 
+    |(.KindBool, "true") => ⟨.ValBool 1⟩ 
+    |(_,val) => ⟨.ValInt (val.toNat!)⟩ 
 
 
 

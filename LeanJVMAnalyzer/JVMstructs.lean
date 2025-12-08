@@ -86,8 +86,15 @@ structure  RefClass where
      name : String
      deriving ToJson, FromJson, Repr, BEq
 
-inductive ValueEnum where | ValClass (c : RefClass) | Class (s : String) | Ref (i : Nat) | ValInt (i : Int) | ValChar (c : Int) | ValBool (b : Int) | Dummy
-    deriving ToJson, Repr, BEq
+inductive ValueEnum where 
+    | ValClass (c : RefClass) 
+    | ValRef (i : Nat) 
+    | ValInt (i : Int) 
+    | ValChar (c : Int) 
+    | ValBool (b : Int) 
+    | ValShort (i : Int) 
+    | Dummy
+        deriving ToJson, Repr, BEq
 
 
 def ValueEnumFromJson (j : Json) : Except String ValueEnum :=
@@ -249,14 +256,57 @@ instance : Repr InnerClassType where
     reprPrec _ _ := "InnerClassType"
 
 
-structure  BytecodeValue where
+structure  BytecodeValueOLD where
      type : KindEnum
      value : ValueEnum 
      deriving ToJson, FromJson, Repr, BEq 
 
+structure  BytecodeValue where
+     value : ValueEnum 
+     deriving ToJson, Repr, BEq 
+
+
+def BytecodeValueFromJson (j : Json) : Except String BytecodeValue := do
+    let type : KindEnum <- fromJson? (← j.getObjVal? "type") 
+    let value : ValueEnum <- fromJson? (← j.getObjVal?  "value")
+    match (type,value) with 
+    |(KindEnum.KindInt, ValueEnum.ValInt i) => pure ⟨ValueEnum.ValInt i⟩ 
+    |(KindEnum.KindBool, ValueEnum.ValInt i) => pure ⟨ValueEnum.ValBool i⟩ 
+    |(KindEnum.KindChar, ValueEnum.ValInt i) => pure ⟨ValueEnum.ValChar i⟩ 
+    |(KindEnum.KindShort, ValueEnum.ValInt i) => pure ⟨ValueEnum.ValShort i⟩ 
+    |(KindEnum.Ref, ValueEnum.ValInt i) => pure ⟨ValueEnum.ValRef i.toNat⟩ 
+    |(KindEnum.Class, ValueEnum.ValClass c) => pure ⟨ValueEnum.ValClass c⟩ 
+    |(ek,ev) => throw s!"Failed to instantiate BytecodeVal from {reprStr ek} and {reprStr ev}"
+
+
+    /- match j.getObjVal? "value" >>= fun o => o.getInt? with  -/
+    /- |.ok value =>  -/
+    /-     match type with -/
+    /-     | "integer" => pure ⟨ValueEnum.ValInt value⟩ -/
+    /-     | "int" => pure ⟨ValueEnum.ValInt value⟩ -/
+    /-     | "char" => pure ⟨ValueEnum.ValChar value⟩ -/
+    /-     | "boolean" => pure ⟨ValueEnum.ValBool value⟩ -/
+    /-     | "short" => pure ⟨ValueEnum.ValShort value⟩ -/
+    /-     | "ref" => pure ⟨ValueEnum.ValRef value.toNat⟩ -/
+    /-     | e => throw s!"Failed to parse bytecode {e}" -/
+    /- |.error _ =>  -/
+    /-     match (FromJson.fromJson? j : Except _ RefClass) with  -/
+    /-     | .ok rc => pure ⟨ValueEnum.ValClass rc⟩  -/
+    /-     | .error e => throw s!"Failed to parse bytecode {e}" -/
+
+instance instFromJsonBytecodeValue : FromJson BytecodeValue where 
+    fromJson? := BytecodeValueFromJson
+
 instance : Repr BytecodeValue where 
-  reprPrec := fun bc => let val := bc.value
-              fun _ => Std.Format.text (reprStr val)
+  reprPrec bc _ := 
+      let val := bc.value
+      Std.Format.text (reprStr val)
+
+instance : Repr BytecodeValue where 
+  reprPrec bc _ := 
+      let val := bc.value
+      Std.Format.text (reprStr val)
+
 
 structure  BytecodeField where
      «class»: String
@@ -618,6 +668,13 @@ info: Except.ok (Operation.Invoke
 -/
 #guard_msgs in
 #eval do return (FromJson.fromJson? (← IO.ofExcept classbytecode): Except _ Operation) 
+
+def bytecodevalInteger := Json.parse r#"{"type": "integer","value": 1}"#
+
+/-- info: Except.ok ValueEnum.ValInt 1 -/
+#guard_msgs in
+#eval do return (FromJson.fromJson? (← IO.ofExcept bytecodevalInteger): Except _ BytecodeValue)
+
 
 def bytecodevalueclass := Json.parse r#"{"type": "class","value": {"kind": "class","name": "jpamb/cases/Simple"}}"#
 

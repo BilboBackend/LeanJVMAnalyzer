@@ -7,12 +7,12 @@ open Lean.Parser
 
 def parseBool (s : String) : Option BytecodeValue :=
     match s with 
-    |"true" => some <| BytecodeValue.mk KindEnum.KindBool (ValueEnum.ValBool 1)
-    |"false" => some <| BytecodeValue.mk KindEnum.KindBool (ValueEnum.ValBool 0)
+    |"true" => some ⟨ValueEnum.ValBool 1⟩ 
+    |"false" => some ⟨ValueEnum.ValBool 0⟩ 
     |_ => none
 
 def parseInt (s : String) : Option BytecodeValue :=
-    s.toInt? >>= fun i => BytecodeValue.mk KindEnum.KindInt (ValueEnum.ValInt i)
+    s.toInt? >>= fun i => some ⟨ValueEnum.ValInt i⟩ 
 
 
 def parseChar (s : String) : Option BytecodeValue := 
@@ -22,7 +22,7 @@ def parseChar (s : String) : Option BytecodeValue :=
         let inner := s.drop 1 |>.dropRight 1
         let c := inner.front
         match c.isAlpha with 
-        |true => BytecodeValue.mk KindEnum.KindChar (ValueEnum.ValChar c.toNat) 
+        |true => some ⟨ValueEnum.ValChar c.toNat⟩ 
         |false => none
 
 def parseValue (s : String) : Option BytecodeValue := 

@@ -94,14 +94,14 @@ def initializeInputValue (st : Err State) (input : InputValue) (code : Code): Er
     | some f =>
         match input with 
         |.InArray arr => 
-            let newref := ⟨KindEnum.Ref, ValueEnum.Ref s.heap.size⟩ 
+            let newref := ⟨ValueEnum.ValRef s.heap.size⟩ 
             let newstate := {s with heap := s.heap.push (HeapElem.Arr arr)}
             return newstate.updateStackFrame (f.stackPush newref)
         |.InVal v => return s.updateStackFrame {f with locals := #[v] ++ f.locals}
     | none => 
         match input with 
         |.InArray arr => 
-            let newref := ⟨KindEnum.Ref, ValueEnum.Ref s.heap.size⟩ 
+            let newref := ⟨ValueEnum.ValRef s.heap.size⟩ 
             let newframe := JVMFrame.mk [] #[newref] code 0 none --{f with stack := newref :: f.stack} 
             return {s with heap := s.heap.push (HeapElem.Arr arr)}.updateStackFrame newframe
         |.InVal v => 
@@ -137,7 +137,7 @@ def stepPush (s : State) (value: Option BytecodeValue) : Err State := do
     let frame <- s.getFrame 
     match value with 
     | none => 
-        let nullref :=  ⟨KindEnum.Ref,(ValueEnum.Ref 0)⟩ 
+        let nullref :=  ⟨ValueEnum.ValRef 0⟩ 
         return s.updateStackFrame (frame.stackPush nullref).incrpc 
     | some v => 
         return s.updateStackFrame (frame.stackPush v).incrpc
@@ -200,7 +200,7 @@ def stepGet (s : State) (static : Bool) (field : BytecodeField) : Err State := d
     | true => 
         match field.name with 
         |"$assertionsDisabled" => 
-            return s.updateStackFrame (frame.stackPush ⟨KindEnum.KindBool,ValueEnum.ValBool 0⟩ |> .incrpc)
+            return s.updateStackFrame (frame.stackPush ⟨.ValBool 0⟩ |> .incrpc)
         |s => throw ("Cannot get the value of: " ++ s)
     | false => throw "Get not defined for non-static"
     
@@ -222,11 +222,11 @@ def stepReturn (s : State) (type : Option BytecodeType): Err State := do
 
 def simpleArithmetic (v1 : Int) (v2 : Int) (operant : String) : Except String BytecodeValue := 
     match operant with 
-    | "add" => return ⟨.KindInt, .ValInt (v1 + v2)⟩ 
-    | "sub" => return ⟨.KindInt, .ValInt (v1 - v2)⟩ 
-    | "mul" => return ⟨.KindInt, .ValInt (v1 * v2)⟩
-    | "rem" => return ⟨.KindInt, .ValInt (v1 % v2)⟩
-    | "div" => if v2 == 0 then throw "divide by zero" else return ⟨.KindInt, .ValInt (v1 / v2)⟩ 
+    | "add" => return ⟨.ValInt (v1 + v2)⟩ 
+    | "sub" => return ⟨.ValInt (v1 - v2)⟩ 
+    | "mul" => return ⟨.ValInt (v1 * v2)⟩
+    | "rem" => return ⟨.ValInt (v1 % v2)⟩
+    | "div" => if v2 == 0 then throw "divide by zero" else return ⟨.ValInt (v1 / v2)⟩ 
     | o => throw s!"Undefined arithmetic operant {o}"
     
 
@@ -256,7 +256,7 @@ def stepStore (s : State) (index: Nat) (type : BytecodeType) : Err State := do
     | none => 
         let (v,rest) <- frame.stackPop₁ 
         let diff := index - frame.locals.size 
-        let arrend := (Array.replicate diff ⟨KindEnum.Dummy, ValueEnum.Dummy⟩).push v
+        let arrend := (Array.replicate diff ⟨ValueEnum.Dummy⟩).push v
         let newframe := {rest with locals := frame.locals.append arrend}.incrpc
         return s.updateStackFrame newframe
     | some _ => 
@@ -272,9 +272,9 @@ def stepDup (s : State) (words : Int) : Err State := do
 
 def stepNew (s : State)  («class»: String) : Err State := do
     let frame <- s.getFrame 
-    let newref := ⟨KindEnum.Ref, ValueEnum.Ref (s.heap.size)⟩ 
+    let newref := ⟨ValueEnum.ValRef (s.heap.size)⟩ 
     let newstate := s.updateStackFrame (frame.stackPush newref).incrpc
-    let newval := HeapElem.Class ⟨KindEnum.Class,ValueEnum.Class «class»⟩ 
+    let newval := HeapElem.Class ⟨ValueEnum.ValClass ⟨.Class,  «class»⟩⟩  
     return {newstate with heap := newstate.heap.push newval}
 
 def stepInvoke (s : State) (code : JPAMB) (access : BytecodeAccess) (method : BytecodeMethod): Err State := do
@@ -301,8 +301,7 @@ def stepInvoke (s : State) (code : JPAMB) (access : BytecodeAccess) (method : By
 
 
 def createDummyArray (n : Nat) : Array BytecodeValue := 
-  let dummyval := BytecodeValue.mk KindEnum.Dummy ValueEnum.Dummy
-  Array.replicate n dummyval
+  Array.replicate n ⟨ValueEnum.Dummy⟩
 
 def stepNewArray (s : State) (type : BytecodeType) (dim : Nat) : Err State := do
     let frame <- s.getFrame 
@@ -310,7 +309,7 @@ def stepNewArray (s : State) (type : BytecodeType) (dim : Nat) : Err State := do
     | some bcv => 
         match bcv.value with 
         |.ValInt i => 
-            let newref := ⟨KindEnum.KindIntArr, ValueEnum.Ref (s.heap.size)⟩ 
+            let newref := ⟨ValueEnum.ValRef s.heap.size⟩ 
             let newarray := HeapElem.Arr (createDummyArray i.toNat) --should it be dim here?
             let newframe := frame.stackPush newref |> .incrpc
             return {s with heap := s.heap.push newarray}.updateStackFrame newframe 
@@ -334,18 +333,18 @@ def updateHeapArray (s : State) (ref : Nat) (index : Int) (value : BytecodeValue
 def stepArrayStore (s : State) (type : BytecodeType) : Err State := do
     let (val, index, arrayref, rest) <- (← s.getFrame).stackPop₃ 
     match (arrayref.value,index.value) with 
-    | (.Ref r, .ValInt i) => updateHeapArray (s.updateStackFrame rest.incrpc) r i val
+    | (.ValRef r, .ValInt i) => updateHeapArray (s.updateStackFrame rest.incrpc) r i val
     | (_,_) => throw "Arrayref is not of type reference"
 
 def stepArrayLength (s : State) : Err State := do
     let frame <- s.getFrame 
     let (arrayref,rest) <- frame.stackPop₁ 
     match arrayref.value with 
-    | ValueEnum.Ref r => 
+    | ValueEnum.ValRef r => 
         match s.heap[r]? with 
         | none => throw "null pointer"
         | some (HeapElem.Arr arr) => 
-            let length :=  ⟨KindEnum.KindInt, ValueEnum.ValInt  arr.size.toInt64.toInt⟩ 
+            let length :=  ⟨ValueEnum.ValInt  arr.size.toInt64.toInt⟩ 
             return s.updateStackFrame (rest.stackPush length).incrpc 
         | some _ => throw "Not a valid array reference"
     |_ => throw "Not a valid reference in ArrayLength"
@@ -354,7 +353,7 @@ def stepArrayLoad (s : State) (type : BytecodeType) : Err State := do
     let frame <- s.getFrame 
     let (index,arrayref,rest) <- frame.stackPop₂ 
     match (arrayref.value,index.value) with 
-    |(.Ref r, .ValInt i) => 
+    |(.ValRef r, .ValInt i) => 
         match s.heap[r]? with 
         | none => throw "null pointer"
         | some (HeapElem.Arr arr) => 
@@ -371,7 +370,7 @@ def stepIncr (s : State) (index : Nat) (amount : Int): Err State := do
     | some bcv => 
         match bcv.value with 
         | .ValInt v => 
-            let incrval := ⟨KindEnum.KindInt, ValueEnum.ValInt (v+amount)⟩ 
+            let incrval := ⟨.ValInt (v+amount)⟩ 
             return s.updateStackFrame {frame with locals := frame.locals.set! index incrval}.incrpc 
         | _ => throw "Can only increment Int"
 
@@ -383,7 +382,7 @@ def stepNegate (s : State) (type: BytecodeType): Err State := do
     let (val,xs) <- frame.stackPop₁
     match val.value with 
     | .ValInt i => 
-        let newval := ⟨val.type, ValueEnum.ValInt (-i)⟩ 
+        let newval := ⟨.ValInt (-i)⟩ 
         pure <| s.updateStackFrame (xs.stackPush (newval)).incrpc
     | err => throw s!"Tried to negate incompatible value {reprStr err}"
    
