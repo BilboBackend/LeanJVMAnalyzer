@@ -79,13 +79,13 @@ def parseArgs (args : List String) : IO Unit :=
         let method := parseMethod methodstr 
         if method.isValid 
         then do 
-            runDynamic method true
+            runDynamic method false
         else println! "Invalid method argument"
     | methodstr::inputstr::_ => do
         let (method,input) := parseInputs methodstr inputstr
         if method.isValid
         then 
-            let res := evaluateMethod method input false
+            let res := evaluateMethod method input true
             printResult (← res)
         else
             println! "Invalid arguments"

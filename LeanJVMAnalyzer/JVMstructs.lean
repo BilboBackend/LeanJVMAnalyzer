@@ -295,8 +295,35 @@ inductive Operation where
   | ArrayLength (offset : Nat) 
   | NewArray (offset : Nat) (type : BytecodeType) (dim : Nat)
   | Cast (offset : Nat) («from» : KindEnum) (to : KindEnum)
+  | Negate (offset : Nat) (type: BytecodeType) 
      deriving ToJson, Repr 
 
+namespace Operation 
+
+def offset : Operation -> Nat 
+  | Push o _ 
+  | Load o _ _
+  | Invoke o _ _ 
+  | Return o _
+  | Ifz o _ _
+  | New o _
+  | Dup o _
+  | Get o _ _
+  | Throw o
+  | Binary o _ _
+  | If o _ _
+  | Goto o _
+  | Put o _
+  | Incr o _ _
+  | Store o _ _
+  | ArrayStore o _ 
+  | ArrayLoad o _
+  | ArrayLength o
+  | NewArray o _ _
+  | Cast o _ _ 
+  | Negate o _ => o
+
+end Operation
 
 def LoadFromJson (j : Json) : Except String Operation := do
     let index <- j.getObjVal? "index" >>= fun i => i.getNat? 
@@ -409,6 +436,12 @@ def CastFromJson (j : Json) : Except String Operation := do
   let to ← fromJson? (← j.getObjVal? "to")
   return .Cast offset «from» to
 
+def NegateFromJson (j: Json) : Except String Operation := do
+  let offset ← j.getObjVal? "offset" >>= fun o => o.getNat?
+  let type ← fromJson? (← j.getObjVal? "type")
+  return .Negate offset type
+
+
 def OperationFromJson (j : Json) : Except String Operation := do
   let tag ← j.getObjVal? "opr" >>= fun s => s.getStr?
   match tag with
@@ -432,11 +465,11 @@ def OperationFromJson (j : Json) : Except String Operation := do
   | "arraylength" => ArrayLengthFromJson j
   | "newarray"    => NewArrayFromJson j
   | "cast"        => CastFromJson j
+  | "negate"      => NegateFromJson j
   | other         => throw s!"Unknown operation type: {other}"
 
 instance instFromJsonOperation : FromJson Operation where
   fromJson? := OperationFromJson 
-
 
 
 def skipNone {a : Type} [Repr a] : Option a -> String := 
@@ -445,7 +478,7 @@ def skipNone {a : Type} [Repr a] : Option a -> String :=
              | some v => reprStr v
     
     
-structure  Code where
+structure Code where
      annotations : Array String
      bytecode : Array Operation 
      exceptions : Array String

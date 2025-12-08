@@ -377,7 +377,16 @@ def stepIncr (s : State) (index : Nat) (amount : Int): Err State := do
 
 def stepCast (s : State) (froM : KindEnum) (to : KindEnum): Err State := do
     return s.updateStackFrame (← s.getFrame).incrpc 
-    
+ 
+def stepNegate (s : State) (type: BytecodeType): Err State := do
+    let frame <- s.getFrame
+    let (val,xs) <- frame.stackPop₁
+    match val.value with 
+    | .ValInt i => 
+        let newval := ⟨val.type, ValueEnum.ValInt (-i)⟩ 
+        pure <| s.updateStackFrame (xs.stackPush (newval)).incrpc
+    | err => throw s!"Tried to negate incompatible value {reprStr err}"
+   
 def step (st : Err State) (code : JPAMB) : Err State := do
     let s <- st
     if s.frames.isEmpty 
@@ -407,16 +416,58 @@ def step (st : Err State) (code : JPAMB) : Err State := do
         | .ArrayLoad _ type => stepArrayLoad s type
         | .Incr _ index amount => stepIncr s index amount
         | .Cast _ froM to => stepCast s froM to
+        | .Negate _ type => stepNegate s type
         | stp => throw ("Undefined step: " ++ (reprStr stp))
-      
+    
+
+def stepWOffset (st : Err (Nat × State)) (code : JPAMB) : Err (Nat × State) := do
+    let (_,s) <- st
+    if s.frames.isEmpty 
+    then throw "ok"
+    else 
+    let frame <- s.getFrame 
+    match frame.status with 
+    |some _ => pure ((← frame.bc).offset, s)
+    |none => 
+        let bc <- frame.bc
+        let state <-
+            match bc with 
+            | .Push _ value => stepPush s value
+            | .Ifz _ cond target => stepIfz s cond target
+            | .If _ cond target => stepIf s cond target
+            | .Goto _ target => stepGoto s target
+            | .Get _ static field => stepGet s static field
+            | .Return _ type => stepReturn s type
+            | .Binary _ type operant => stepBinary s type operant
+            | .Load _ index type => stepLoad s index type
+            | .Store _ index type => stepStore s index type
+            | .Dup _ words => stepDup s words
+            | .New _ clAss => stepNew s clAss
+            | .Invoke _ access method => stepInvoke s code access method
+            | .NewArray _ type dim => stepNewArray s type dim
+            | .ArrayStore _ type => stepArrayStore s type
+            | .ArrayLength _ => stepArrayLength s 
+            | .ArrayLoad _ type => stepArrayLoad s type
+            | .Incr _ index amount => stepIncr s index amount
+            | .Cast _ froM to => stepCast s froM to
+            | stp => throw ("Undefined step: " ++ (reprStr stp))
+        let offset := bc.offset
+        return (offset,state)
+  
 
 -- Limit is set in the counter
-def interpret (state : Err State) (code : JPAMB) (counter : Nat) : Except String String := do
+def interpret (state : Err State) (code : JPAMB) (counter : Nat) : Err String := do
     if counter > 0
-    then interpret (step state code) code (counter - 1) 
+    then 
+        match state with 
+        |.ok st => interpret (step state code) code (counter - 1) 
+        |.error e => throw e
     else throw "*"
 
 
+
+
+------ Logging Interpreter --------
 def initFrame (args : Array BytecodeValue) (code : Code) :  JVMFrame :=  JVMFrame.mk [] args code 0 none
 
 
@@ -434,13 +485,28 @@ instance : Monad (WithLog logged) where
         let {log := nextLog, val := nextRes} := next currentRes
         {log := currentLog ++ nextLog, val := nextRes}
 
-def logInterpret (state : Err State) (code : JPAMB) (counter : Nat) : WithLog (Err State) (Except String String) :=
+def logInterpret (state : Err State) (code : JPAMB) (counter : Nat) : WithLog (Err State) (Err String) :=
     if counter > 0 
     then match state with 
-         |.ok st => let loggedstate := save state 
-                  loggedstate >>= fun newstate => 
-                  logInterpret (step newstate code) code (counter - 1)
+         |.ok st => 
+            let loggedstate := save state 
+            loggedstate >>= fun newstate => 
+            logInterpret (step newstate code) code (counter - 1)
          |.error e => pure (throw e)
+    else pure (throw "*")
+
+
+------ Coverage Interpreter -------- 
+def offsetInterpret (state : Err (Nat × State)) (code : JPAMB) (counter : Nat) : WithLog (Err (Nat × State)) (Err String):= do
+    if counter > 0
+    then 
+        match state with 
+        |.ok st => 
+            let loggedstate := save state 
+            let (offset,s) := st
+            loggedstate >>= fun newstate =>
+            offsetInterpret (stepWOffset newstate code) code (counter - 1) 
+        |.error e => pure (throw e)
     else pure (throw "*")
 
 

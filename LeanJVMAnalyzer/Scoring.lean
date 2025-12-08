@@ -38,8 +38,5 @@ def updateScore (scores : ErrorGuess) (st : Except String String) : ErrorGuess :
 
 
 
-
-
-
 #eval [(.error "divide by zero"), (.error "assertion error")].foldl updateScore (standardScore "50")
 

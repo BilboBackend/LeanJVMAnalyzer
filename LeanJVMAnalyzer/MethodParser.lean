@@ -16,16 +16,27 @@ namespace Method
 def loadFile (method : Method) : IO String := do
     let filepath ← 
         IO.FS.readFile <| .toString 
-        <| System.mkFilePath ("decompiled" :: method.classpath) 
+        <| System.mkFilePath ("target" :: "decompiled" :: method.classpath) 
         |>.addExtension "json"
     return filepath
+
+def getPath (method : Method) : System.FilePath := 
+    System.mkFilePath ("decompiled" :: method.classpath) |>.addExtension "json" 
+    
+def loadFileStream (method : Method) : IO (Option IO.FS.Stream) := do
+    let fileexists ← method.getPath.pathExists 
+    if fileexists
+    then 
+        let stderr <- IO.getStderr 
+        stderr.putStrLn s!"File {method.getPath} not found!"
+        return none
+    else 
+        let handle <- IO.FS.Handle.mk method.getPath IO.FS.Mode.read 
+        return some (IO.FS.Stream.ofHandle handle)
 
 def isValid (desc : Method) : Bool := 
     let ls := List.map (fun x => x != "") ([desc.name] ++ [desc.outtypes] ++ desc.classpath)
     (List.foldl (· && ·) True ls) && (desc.classpath.length > 0) 
-
-def getPath (method : Method) : System.FilePath :=
-    System.mkFilePath method.classpath 
 
 end Method
 
