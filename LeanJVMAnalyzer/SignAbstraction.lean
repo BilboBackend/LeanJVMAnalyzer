@@ -145,6 +145,16 @@ def compareHelp (cond: Condition)(s1: Sign) (s2: Sign) : Finset Bool :=
     | .Gt => ltSign s2 s1 
     | .Le => leSign s1 s2 
     | .Ge => leSign s2 s1 
+
+def compareConcrete (cond: Condition)(s1: Int) (s2: Int) : Finset Bool :=
+    let prop := match cond with 
+      | .Ne => (s1 != s2)
+      | .Eq => (s1 == s2)
+      | .Lt => s1 < s2
+      | .Gt => s2 < s1 
+      | .Le => s1 <= s2 
+      | .Ge => s2 <= s1 
+    if prop then {true} else {false}
     
 def compareSignSet (cond: Condition) (s1 : SignSet) (s2 : SignSet) : Finset Bool :=
      (s1.product s2).biUnion (fun (s1, s2) =>
@@ -191,7 +201,7 @@ def abstractSign (bc : BytecodeValue) : BytecodeValueA Sign :=
     |.ValChar i => ⟨.ValChar (signFromInt i)⟩ 
     |.ValBool i => ⟨.ValBool (signFromInt i)⟩ 
     |.ValShort i => ⟨.ValShort (signFromInt i)⟩ 
-    |.ValRef i => ⟨.ValRef (signFromInt i)⟩ 
+    |.ValRef i => ⟨.ValRef i⟩ 
     |.Dummy  => ⟨.Dummy⟩ 
     |.ValClass s => ⟨.ValClass s⟩
  
@@ -211,7 +221,12 @@ def concreteSignSet (a : SignSet) : Set BytecodeValue:=
 def signSetCheck (cond : Condition) (s1 s2 : BytecodeValueA Sign) : Err (Finset Bool) := do
     let v1 ← getValue s1 
     let v2 ← getValue s2
-    return (compareHelp cond v1 v2)
+    match v1,v2 with
+    | .val vi1, .val vi2 =>
+        return (compareHelp cond vi1 vi2)
+    | .ref vi1, .ref vi2 => 
+        return (compareConcrete cond vi1 vi2)
+    | _, _ => throw "Trying to compare reference values and abstract values"
 
 theorem SignSet.le_refl (a : SignSet) : (a ∪ a) <= a := by
     simp

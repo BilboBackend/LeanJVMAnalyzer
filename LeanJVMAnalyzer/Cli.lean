@@ -126,7 +126,8 @@ def parseArgs
         let (method,input) := parseInputs methodstr inputstr
         if method.isValid
         then 
-            --let res := evaluateMethod method input true
+            --let res := evaluateMethod method input false 
+            --printResult (← res)
             let res := abstractEvaluateMethod Sign method input 
             IO.println <| printSingles <| (← res)
         else

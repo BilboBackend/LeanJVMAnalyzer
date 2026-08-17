@@ -84,8 +84,10 @@ def bc (frame : GenFrame α β) : Except String Operation :=
 end GenFrame 
 
 
+inductive AbstractHeapElem (α β) [Domain β] [Abstraction α β] where | Arr (a : Array BytecodeValue)| Class (b : BytecodeValue) deriving Repr
+
 structure Stateful (α : Type) (β : outParam (Type → Type))  [Domain β] [Abstraction α β] where 
-    heap : Array HeapElem 
+    heap : Array HeapElem  
     frames : Array (GenFrame α β)
 
 abbrev ErrASt (α : Type) (β : outParam (Type → Type))  [Domain β] [Abstraction α β] := Err (List (Stateful α β))
@@ -223,27 +225,53 @@ def abstractStepReturn  (s : Stateful α β) (type : Option BytecodeType): ErrAS
         | some f => return [newstackframe.updateStackFrame (f.stackPush v |> .incrpc)]
     | (_,_) => throw s!"Cannot return on operation"
 
-def getValue (b : BytecodeValueA α) : Err α := 
+inductive InnerValue (α : Type) where | val : α -> InnerValue α | ref : Int -> InnerValue α 
+
+def getValue (b : BytecodeValueA α) : Err (InnerValue α) := 
     match b.value with
-    | .ValRef i => pure i
-    | .ValInt i => pure i
-    | .ValChar c => pure c
-    | .ValBool b => pure b
-    | .ValShort i => pure i
+    | .ValRef i => pure (.ref i)
+    | .ValInt i => pure (.val i)
+    | .ValChar c => pure (.val c)
+    | .ValBool b => pure (.val b)
+    | .ValShort i => pure (.val i)
     | .ValClass c => do throw "Tried to get value of class"
     | .Dummy => do throw "Tried to get value of dummy" 
+ 
 
-def genericArithmetic (b1 b2 : BytecodeValueA α) (operant : String) : Err (β α) := do  
+def genericArithmetic (b1 b2 : BytecodeValueA α) (operant : String) : Err (List (BytecodeValueA α)) := do  
     let v1 ← getValue b1 
     let v2 ← getValue b2
-    match operant with 
-    | "add" => return v1 +ₐ v2 
-    | "sub" => return v1 -ₐ v2
-    | "mul" => return v1 *ₐ v2
-    | "rem" => return v1 %ₐ v2
-    | "div" => if (A.abstract ⟨ .ValInt 0⟩) == ⟨.ValInt v2⟩ then throw "divide by zero" else return v1 /ₐ  v2 
-    | o => throw s!"Undefined arithmetic operant {o}"
-    
+    let values ←
+    match v1,v2 with 
+    | .ref vi1, .ref vi2 => 
+        match operant with 
+        | "add" => return [⟨.ValRef (vi1 + vi2)⟩]
+        | "sub" => return [⟨.ValRef (vi1 - vi2)⟩]
+        | "mul" => return [⟨.ValRef (vi1 * vi2)⟩]
+        | "rem" => return [⟨.ValRef (vi1 % vi2)⟩]
+        | "div" => if 0 == vi2 then throw "divide by zero" else return [⟨.ValRef (vi1 / vi2)⟩]
+        | o => throw s!"Undefined arithmetic operant {o}"
+    | .val vi1, .val vi2 =>
+        match operant with 
+        | "add" => return (Arithmetic.toList (vi1 +ₐ vi2)).map (fun v => ⟨.ValInt v⟩)
+        | "sub" => return (Arithmetic.toList (vi1 -ₐ vi2)).map (fun v => ⟨.ValInt v⟩)
+        | "mul" => return (Arithmetic.toList (vi1 *ₐ vi2)).map (fun v => ⟨.ValInt v⟩)
+        | "rem" => return (Arithmetic.toList (vi1 %ₐ vi2)).map (fun v => ⟨.ValInt v⟩)
+        | "div" => if (A.abstract ⟨ .ValInt 0⟩) == ⟨.ValInt vi2⟩ then throw "divide by zero" else return (Arithmetic.toList (vi1 /ₐ vi2)).map (fun v => ⟨.ValInt v⟩) 
+        | o => throw s!"Undefined arithmetic operant {o}"
+    | _, _ => throw "Tried to perform arithmetic on abstract value and reference!"
+ 
+/- def OLDgenericArithmetic (b1 b2 : BytecodeValueA α) (operant : String) : Err α := do   -/
+/-     let v1 ← getValue b1  -/
+/-     let v2 ← getValue b2 -/
+/-     match operant with  -/
+/-     | "add" => return v1 +ₐ v2  -/
+/-     | "sub" => return v1 -ₐ v2 -/
+/-     | "mul" => return v1 *ₐ v2 -/
+/-     | "rem" => return v1 %ₐ v2 -/
+/-     | "div" => if (A.abstract ⟨ .ValInt 0⟩) == ⟨.ValInt v2⟩ then throw "divide by zero" else return v1 /ₐ  v2  -/
+/-     | o => throw s!"Undefined arithmetic operant {o}" -/
+   
 
 def abstractStepBinary (s : Stateful α β) (type: BytecodeType) (opr: String)  : ErrASt α β := do
     let frame <- s.getFrame 
@@ -251,7 +279,7 @@ def abstractStepBinary (s : Stateful α β) (type: BytecodeType) (opr: String)  
     | v2::v1::rest =>  
         match genericArithmetic v1 v2 opr with 
         |.ok values => 
-            return List.map (fun v => s.updateStackFrame ({frame with stack := rest}.stackPush ⟨.ValInt v⟩ |> .incrpc)) (Arithmetic.toList values)
+            return values.map (fun v => s.updateStackFrame ({frame with stack := rest}.stackPush v |> .incrpc))
         |.error e => throw e
     | _ => throw "invalid stack"
 
@@ -330,18 +358,18 @@ def abstractStepNewArray (s : Stateful α β) (type : BytecodeType) (dim : Nat) 
 
 
 def abstractUpdateHeapArray (s : Stateful α β) (ref : Nat) (index : Int) (value : α) : ErrASt α β :=
-    throw "UpdateHeapArray not implemented"
-    /- match s.heap[ref]? with  -/
-    /- | none => throw "null pointer" -/
-    /- | some h =>  -/
-    /-     match h with  -/
-    /-     |.Class _ => throw "Trying to access non-array heap value"  -/
-    /-     |.Arr arr =>  -/
-    /-         match arr[index.toNat]? with  -/
-    /-         | none => throw s!"out of bounds" --, index: {index}, size: {arr.size}"  -/
-    /-         | some _ =>  -/
-    /-             let newarr := HeapElem.Arr <| arr.set! index.toNat sorry -- (Abstraction.concrete value) -/
-    /-             return [{s with heap := s.heap.set! ref newarr }]--s.heap.setIfInBounds ref newarr}  -/
+    -- throw "UpdateHeapArray not implemented"
+    match s.heap[ref]? with 
+    | none => throw "null pointer"
+    | some h => 
+        match h with 
+        |.Class _ => throw "Trying to access non-array heap value" 
+        |.Arr arr => 
+            match arr[index.toNat]? with 
+            | none => throw s!"out of bounds" --, index: {index}, size: {arr.size}" 
+            | some _ => 
+                let newarr := HeapElem.Arr <| arr.set! index.toNat sorry -- (Abstraction.concrete value)
+                return [{s with heap := s.heap.set! ref newarr }]--s.heap.setIfInBounds ref newarr} 
 
 def abstractStepArrayStore (s : Stateful α β) (type : BytecodeType) : ErrASt α β := do
     throw "ArrayStore not implemented"
@@ -391,7 +419,7 @@ def abstractStepIncr (s : Stateful α β) (index : Nat) (amount : Int): ErrASt �
         match incrval with 
         |.error e => throw e
         |.ok values => 
-            return List.map (fun v => s.updateStackFrame {frame with locals := frame.locals.set! index ⟨.ValInt v⟩}.incrpc) (Arithmetic.toList values)
+            return values.map (fun v => s.updateStackFrame {frame with locals := frame.locals.set! index v}.incrpc) 
 
 
 
@@ -407,7 +435,7 @@ def abstractStepNegate(s : Stateful α β) (type: BytecodeType): ErrASt α β:= 
     match newvals with 
     |.error e => throw e
     |.ok values => 
-        return List.map (fun v => s.updateStackFrame (xs.stackPush ⟨.ValInt v⟩).incrpc) (Arithmetic.toList values)
+        return values.map (fun v => s.updateStackFrame (xs.stackPush v).incrpc) 
 
 
 def abstractStep (s : Stateful α β) (code : JPAMB) : ErrASt α β := do

@@ -89,7 +89,7 @@ structure  RefClass where
 
 inductive ValueEnumA (α : Type*)  where
     | ValClass (c : RefClass)
-    | ValRef (i : α)
+    | ValRef (i : Int)
     | ValInt (i : α)
     | ValChar (c : α)
     | ValBool (b : α)
