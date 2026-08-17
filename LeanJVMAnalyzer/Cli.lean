@@ -4,6 +4,8 @@ import LeanJVMAnalyzer.JVMstructs
 import LeanJVMAnalyzer.MethodParser
 import LeanJVMAnalyzer.Scoring
 import LeanJVMAnalyzer.DynamicAnalysis
+import LeanJVMAnalyzer.GenericInterpreter
+import LeanJVMAnalyzer.SignAbstraction
 
 open Lean
 
@@ -39,8 +41,6 @@ def runInterpreter (jpamb : JPAMB) (method: Method) (input : Option (List InputV
         else {log := [], val := interpret init jpamb limit}
     (logged,res)
 
-
-
 def evaluateMethod (method : Method) (input : Option (List InputValue)) (logging: Bool) : IO (Except String String) := do
     let file ← method.loadFile
     let json ← IO.ofExcept <| Json.parse file
@@ -56,7 +56,7 @@ def scoreResults (results : List (Except String String)) (is_void_method : Bool)
     then List.foldl (fun curr_score res => updateScore curr_score res) init_score results
     else List.foldl (fun curr_score res => updateScoreVoid curr_score res) init_score results
 
-    
+   
 def runDynamic (method : Method) (logging : Bool) : IO Unit := do 
     let inputstrs := generateInputs method.argtypes
     let inputs := inputstrs.map parseInput 
@@ -70,8 +70,49 @@ def runDynamic (method : Method) (logging : Bool) : IO Unit := do
     IO.println <| reprStr <| scoreResults (← results) is_void
 
 
+def runAbstractInterpreter 
+    {α : Type} {β : outParam (Type → Type)}  [Domain β] [Abstraction α β]
+    (jpamb : JPAMB) (method: Method) 
+    (input : Option (List InputValue)) 
+    (limit : Nat)
+    : List String := 
+        let init := initializeAbstractMethod jpamb method.name input
+        match (init : Err (List (Err (Stateful α β)))) with 
+        |.ok initial => interpretMany initial jpamb [] limit
+        |.error _ => ["Failed to initialize"] 
+    
 
-def parseArgs (args : List String) : IO Unit := 
+def abstractEvaluateMethod 
+    (α : Type) {β : outParam (Type → Type)} [Domain β] [Abstraction α β]
+    (method : Method) 
+    (input : Option (List InputValue)) 
+    : IO (List String) := do
+        let file ← method.loadFile
+        let json ← IO.ofExcept <| Json.parse file
+        let jpamb : JPAMB ← IO.ofExcept <| FromJson.fromJson? json 
+        return (runAbstractInterpreter (α := Sign) (β := Finset) jpamb method input 1000)
+
+def printSingles (res : List String) : String :=
+    match res with 
+    |[x] => x
+    | xs => reprStr xs
+
+def runAbstract (method : Method) (logging : Bool) : IO Unit := do 
+    let inputstrs := generateInputs method.argtypes
+    let inputs := inputstrs.map parseInput 
+    let is_void := if method.argtypes == "" then true else false
+    let results :=
+        match method.argtypes with  
+        |"[I"
+        |"[C" => pure []
+        |"" => inputs.mapM (fun inputstr => evaluateMethod method inputstr logging)
+        |_ => inputs.mapM (fun inputstr => evaluateMethod method inputstr logging)
+    IO.println <| reprStr <| scoreResults (← results) is_void
+
+
+
+def parseArgs 
+  (args : List String) : IO Unit := 
     match args with 
     | [] => println! "No input given"
     | ["info"] => printInfo
@@ -85,8 +126,9 @@ def parseArgs (args : List String) : IO Unit :=
         let (method,input) := parseInputs methodstr inputstr
         if method.isValid
         then 
-            let res := evaluateMethod method input true
-            printResult (← res)
+            --let res := evaluateMethod method input true
+            let res := abstractEvaluateMethod Sign method input 
+            IO.println <| printSingles <| (← res)
         else
             println! "Invalid arguments"
             println! methodstr ++ " " ++ inputstr

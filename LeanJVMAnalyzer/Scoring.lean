@@ -37,6 +37,14 @@ def updateScore (scores : ErrorGuess) (st : Except String String) : ErrorGuess :
 
 
 
-
+/--
+info: out of bounds;50%
+null pointer;50%
+ok;50%
+*;50%
+assertion error;100%
+divide by zero;100%
+-/
+#guard_msgs in 
 #eval [(.error "divide by zero"), (.error "assertion error")].foldl updateScore (standardScore "50")
 

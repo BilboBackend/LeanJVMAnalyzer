@@ -2,8 +2,6 @@ import LeanJVMAnalyzer.JVMstructs
 import Lean.Log
 
 
-def initinfo : JPAMBInfo := JPAMBInfo.mk "semantics" "1.0" "JSON Bourne" #["lean4", "dynamic","smallcheck"] "true"
-
 abbrev Err := Except String 
 
 structure JVMFrame where 
@@ -62,7 +60,6 @@ structure State where
     heap : Array HeapElem
     frames : Array JVMFrame
 
-
 instance : Repr State where 
     reprPrec f _ := 
         let heapfmt := s!"Heap: {reprStr f.heap}\n"
@@ -70,7 +67,6 @@ instance : Repr State where
         let stackframefmt := s!"Frame: \n {reprStr currentframe}\n"
         Std.Format.text (List.foldl (· ++ ·) "" [heapfmt, stackframefmt])
                                                           
-
 
 namespace State 
 
@@ -84,6 +80,9 @@ def updateStackFrame (frame : JVMFrame) (state : State) : State :=
 
 end State
 
+structure AbstractState where 
+  states : Err State
+
 
 inductive InputValue where | InArray (arr : Array BytecodeValue) | InVal (v : BytecodeValue)
   deriving Repr 
@@ -95,14 +94,14 @@ def initializeInputValue (st : Err State) (input : InputValue) (code : Code): Er
     | some f =>
         match input with 
         |.InArray arr => 
-            let newref := ⟨.ValRef s.heap.size⟩ 
+            let newref := ⟨ValueEnum.ValRef s.heap.size⟩ 
             let newstate := {s with heap := s.heap.push (HeapElem.Arr arr)}
             return newstate.updateStackFrame (f.stackPush newref)
         |.InVal v => return s.updateStackFrame {f with locals := #[v] ++ f.locals}
     | none => 
         match input with 
         |.InArray arr => 
-            let newref := ⟨.ValRef s.heap.size⟩ 
+            let newref := ⟨ValueEnum.ValRef s.heap.size⟩ 
             let newframe := JVMFrame.mk [] #[newref] code 0 none --{f with stack := newref :: f.stack} 
             return {s with heap := s.heap.push (HeapElem.Arr arr)}.updateStackFrame newframe
         |.InVal v => 
@@ -134,12 +133,11 @@ def extractBytecode (file : JPAMB) (methodname : String) : Except String (Array 
     | none  => throw ("No method with the name: " ++ methodname)
     | some x => pure x.code.bytecode
 
-
 def stepPush (s : State) (value: Option BytecodeValue) : Err State := do
     let frame <- s.getFrame 
     match value with 
     | none => 
-        let nullref :=  ⟨.ValRef 0⟩ 
+        let nullref :=  ⟨ValueEnum.ValRef 0⟩ 
         return s.updateStackFrame (frame.stackPush nullref).incrpc 
     | some v => 
         return s.updateStackFrame (frame.stackPush v).incrpc
@@ -232,7 +230,7 @@ def simpleArithmetic (v1 : Int) (v2 : Int) (operant : String) : Except String By
     | o => throw s!"Undefined arithmetic operant {o}"
     
 
-def stepBinary (s : State) (_type: BytecodeType) (opr: String)  : Err State := do
+def stepBinary (s : State) (type: BytecodeType) (opr: String)  : Err State := do
     let frame <- s.getFrame 
     match frame.stack with 
     | v2::v1::rest =>  
@@ -245,20 +243,20 @@ def stepBinary (s : State) (_type: BytecodeType) (opr: String)  : Err State := d
     | _ => throw "invalid stack"
 
 
-def stepLoad (s : State) (index: Nat) (_type : BytecodeType) : Err State := do
+def stepLoad (s : State) (index: Nat) (type : BytecodeType) : Err State := do
     let frame <- s.getFrame 
     match frame.locals[index]? with 
     | none => throw "null pointer"
     | some v => return s.updateStackFrame (frame.stackPush v).incrpc
 
 
-def stepStore (s : State) (index: Nat) (_type : BytecodeType) : Err State := do
+def stepStore (s : State) (index: Nat) (type : BytecodeType) : Err State := do
     let frame <- s.getFrame 
     match frame.locals[index]? with 
     | none => 
         let (v,rest) <- frame.stackPop₁ 
         let diff := index - frame.locals.size 
-        let arrend := (Array.replicate diff ⟨.Dummy⟩).push v
+        let arrend := (Array.replicate diff ⟨ValueEnum.Dummy⟩).push v
         let newframe := {rest with locals := frame.locals.append arrend}.incrpc
         return s.updateStackFrame newframe
     | some _ => 
@@ -266,7 +264,7 @@ def stepStore (s : State) (index: Nat) (_type : BytecodeType) : Err State := do
         let newframe := {rest with locals := frame.locals.set! index v}.incrpc
         return s.updateStackFrame newframe 
 
-def stepDup (s : State) (_words : Int) : Err State := do
+def stepDup (s : State) (words : Int) : Err State := do
     let frame <- s.getFrame 
     match frame.stack[0]? with 
     | none => throw "null pointer"
@@ -274,9 +272,9 @@ def stepDup (s : State) (_words : Int) : Err State := do
 
 def stepNew (s : State)  («class»: String) : Err State := do
     let frame <- s.getFrame 
-    let newref := ⟨.ValRef (s.heap.size)⟩ 
+    let newref := ⟨ValueEnum.ValRef (s.heap.size)⟩ 
     let newstate := s.updateStackFrame (frame.stackPush newref).incrpc
-    let newval := HeapElem.Class ⟨.ValClass ⟨.Class,  «class»⟩⟩  
+    let newval := HeapElem.Class ⟨ValueEnum.ValClass ⟨.Class,  «class»⟩⟩  
     return {newstate with heap := newstate.heap.push newval}
 
 def stepInvoke (s : State) (code : JPAMB) (access : BytecodeAccess) (method : BytecodeMethod): Err State := do
@@ -303,15 +301,15 @@ def stepInvoke (s : State) (code : JPAMB) (access : BytecodeAccess) (method : By
 
 
 def createDummyArray (n : Nat) : Array BytecodeValue := 
-  Array.replicate n ⟨.Dummy⟩
+  Array.replicate n ⟨ValueEnum.Dummy⟩
 
-def stepNewArray (s : State) (_type : BytecodeType) (_dim : Nat) : Err State := do
+def stepNewArray (s : State) (type : BytecodeType) (dim : Nat) : Err State := do
     let frame <- s.getFrame 
     match frame.stack[0]? with 
     | some bcv => 
         match bcv.value with 
         |.ValInt i => 
-            let newref := ⟨.ValRef s.heap.size⟩ 
+            let newref := ⟨ValueEnum.ValRef s.heap.size⟩ 
             let newarray := HeapElem.Arr (createDummyArray i.toNat) --should it be dim here?
             let newframe := frame.stackPush newref |> .incrpc
             return {s with heap := s.heap.push newarray}.updateStackFrame newframe 
@@ -332,31 +330,31 @@ def updateHeapArray (s : State) (ref : Nat) (index : Int) (value : BytecodeValue
                 let newarr := HeapElem.Arr <| arr.set! index.toNat value
                 pure {s with heap := s.heap.set! ref newarr }--s.heap.setIfInBounds ref newarr} 
 
-def stepArrayStore (s : State) (_type : BytecodeType) : Err State := do
+def stepArrayStore (s : State) (type : BytecodeType) : Err State := do
     let (val, index, arrayref, rest) <- (← s.getFrame).stackPop₃ 
     match (arrayref.value,index.value) with 
-    | (.ValRef r, .ValInt i) => updateHeapArray (s.updateStackFrame rest.incrpc) r.toNat i val
+    | (.ValRef r, .ValInt i) => updateHeapArray (s.updateStackFrame rest.incrpc) r i val
     | (_,_) => throw "Arrayref is not of type reference"
 
 def stepArrayLength (s : State) : Err State := do
     let frame <- s.getFrame 
     let (arrayref,rest) <- frame.stackPop₁ 
     match arrayref.value with 
-    | .ValRef r => 
-        match s.heap[r.toNat]? with 
+    | ValueEnum.ValRef r => 
+        match s.heap[r]? with 
         | none => throw "null pointer"
         | some (HeapElem.Arr arr) => 
-            let length :=  ⟨.ValInt  arr.size.toInt64.toInt⟩ 
+            let length :=  ⟨ValueEnum.ValInt  arr.size.toInt64.toInt⟩ 
             return s.updateStackFrame (rest.stackPush length).incrpc 
         | some _ => throw "Not a valid array reference"
     |_ => throw "Not a valid reference in ArrayLength"
 
-def stepArrayLoad (s : State) (_type : BytecodeType) : Err State := do
+def stepArrayLoad (s : State) (type : BytecodeType) : Err State := do
     let frame <- s.getFrame 
     let (index,arrayref,rest) <- frame.stackPop₂ 
     match (arrayref.value,index.value) with 
     |(.ValRef r, .ValInt i) => 
-        match s.heap[r.toNat]? with 
+        match s.heap[r]? with 
         | none => throw "null pointer"
         | some (HeapElem.Arr arr) => 
             match arr[i.toNat]? with 
@@ -376,10 +374,10 @@ def stepIncr (s : State) (index : Nat) (amount : Int): Err State := do
             return s.updateStackFrame {frame with locals := frame.locals.set! index incrval}.incrpc 
         | _ => throw "Can only increment Int"
 
-def stepCast (s : State) (_froM : KindEnum) (_toKind : KindEnum): Err State := do
+def stepCast (s : State) (froM : KindEnum) (_ : KindEnum): Err State := do
     return s.updateStackFrame (← s.getFrame).incrpc 
  
-def stepNegate (s : State) (_type: BytecodeType): Err State := do
+def stepNegate (s : State) (type: BytecodeType): Err State := do
     let frame <- s.getFrame
     let (val,xs) <- frame.stackPop₁
     match val.value with 
@@ -388,7 +386,7 @@ def stepNegate (s : State) (_type: BytecodeType): Err State := do
         pure <| s.updateStackFrame (xs.stackPush (newval)).incrpc
     | err => throw s!"Tried to negate incompatible value {reprStr err}"
    
-def step (st : Err State) (code : JPAMB) : Err State := do
+def abstractStep (st : AbstractState) (code : JPAMB) : Std.TreeMap Int AbstractState := 
     let s <- st
     if s.frames.isEmpty 
     then throw "ok"
@@ -416,7 +414,40 @@ def step (st : Err State) (code : JPAMB) : Err State := do
         | .ArrayLength _ => stepArrayLength s 
         | .ArrayLoad _ type => stepArrayLoad s type
         | .Incr _ index amount => stepIncr s index amount
-        | .Cast _ fromKind toKind => stepCast s fromKind toKind
+        | .Cast _ froM to => stepCast s froM to
+        | .Negate _ type => stepNegate s type
+        | stp => throw ("Undefined step: " ++ (reprStr stp))
+ 
+def manyStep (astates : Std.TreeMap Int AbstractState) (code : JPAMB) : Std.TreeMap Int AbstractState := 
+    astates.foldl step
+    let s <- st
+    if s.frames.isEmpty 
+    then throw "ok"
+    else 
+    let frame <- s.getFrame 
+    match frame.status with 
+    |some _ => pure s 
+    |none => 
+        let bc <- frame.bc
+        match bc with 
+        | .Push _ value => stepPush s value
+        | .Ifz _ cond target => stepIfz s cond target
+        | .If _ cond target => stepIf s cond target
+        | .Goto _ target => stepGoto s target
+        | .Get _ static field => stepGet s static field
+        | .Return _ type => stepReturn s type
+        | .Binary _ type operant => stepBinary s type operant
+        | .Load _ index type => stepLoad s index type
+        | .Store _ index type => stepStore s index type
+        | .Dup _ words => stepDup s words
+        | .New _ clAss => stepNew s clAss
+        | .Invoke _ access method => stepInvoke s code access method
+        | .NewArray _ type dim => stepNewArray s type dim
+        | .ArrayStore _ type => stepArrayStore s type
+        | .ArrayLength _ => stepArrayLength s 
+        | .ArrayLoad _ type => stepArrayLoad s type
+        | .Incr _ index amount => stepIncr s index amount
+        | .Cast _ froM to => stepCast s froM to
         | .Negate _ type => stepNegate s type
         | stp => throw ("Undefined step: " ++ (reprStr stp))
     
@@ -450,7 +481,7 @@ def stepWOffset (st : Err (Nat × State)) (code : JPAMB) : Err (Nat × State) :=
             | .ArrayLength _ => stepArrayLength s 
             | .ArrayLoad _ type => stepArrayLoad s type
             | .Incr _ index amount => stepIncr s index amount
-            | .Cast _ fromKind toKind => stepCast s fromKind toKind
+            | .Cast _ froM to => stepCast s froM to
             | stp => throw ("Undefined step: " ++ (reprStr stp))
         let offset := bc.offset
         return (offset,state)
@@ -464,7 +495,6 @@ def interpret (state : Err State) (code : JPAMB) (counter : Nat) : Err String :=
         |.ok st => interpret (step state code) code (counter - 1) 
         |.error e => throw e
     else throw "*"
-
 
 
 

@@ -1,12 +1,43 @@
 import Mathlib.Data.Finset.Lattice.Basic
 import Mathlib.Data.Finset.Insert
+import Mathlib.Data.Finset.Basic
 import Mathlib.Order.FixedPoints
-
-#min_imports
+import LeanJVMAnalyzer.GenericInterpreter
+import Mathlib.Tactic
 
 
 inductive Sign where | Pos | Neg | Zero 
-    deriving DecidableEq
+    deriving DecidableEq,Ord, Fintype
+
+
+abbrev SignSet := Finset Sign
+
+instance : LE SignSet where
+    le x y := x ⊆ y
+
+instance : Singleton Sign SignSet where 
+    singleton := fun e => insert e {}
+
+/-- info: true -/
+#guard_msgs in
+#eval ({Sign.Neg} : SignSet) <= ({Sign.Neg, Sign.Zero} : SignSet)
+
+/-- info: false -/
+#guard_msgs in
+#eval ({.Neg} : SignSet) >= ({.Neg, .Zero} : SignSet)
+
+/-- info: false -/
+#guard_msgs in
+#eval ({.Neg,.Pos} : SignSet) >= ({.Neg, .Zero} : SignSet)
+
+/-- info: false -/
+#guard_msgs in 
+#eval ({.Neg,.Pos} : SignSet) <= ({.Neg, .Zero} : SignSet)
+
+/-- info: true -/
+#guard_msgs in 
+#eval ({.Neg,.Pos} : SignSet) <= ({.Neg, .Zero,.Pos} : SignSet)
+
 
 instance : Repr Sign where 
     reprPrec := fun s _ => 
@@ -16,97 +47,257 @@ instance : Repr Sign where
                |.Zero => "0"
     Std.Format.text str
 
-structure SignSetBV where
-    bits : BitVec 3
-    deriving Repr, DecidableEq
-
-instance : EmptyCollection SignSetBV where 
-   emptyCollection := SignSetBV.mk 0
-   
-instance : Insert Sign SignSetBV where 
-    insert := fun x xs => 
-    let bv := match x with 
-             |.Zero => BitVec.ofNat 3 1 
-             |.Neg => BitVec.ofNat 3 2
-             |.Pos => BitVec.ofNat 3 4
-    SignSetBV.mk (xs.bits.or bv)
-
-instance : Singleton Sign SignSetBV where 
-    singleton := fun e => insert e {}
+def signFromInt (z : Int) : Sign :=
+    if z = 0 then Sign.Zero
+    else if z < 0 then Sign.Neg
+    else Sign.Pos
 
 
-def printSigns (bv : BitVec 3) : String :=
-    let zero := if bv.umod 2 == 1 then true else false 
-    let neg := if bv.umod 4 >= 2 then true else false 
-    let pos := if bv.umod 8 >= 4 then true else false
-    let set := List.filter (· != "") <| [zero,neg,pos].zipWith (fun x y => if x == true then y else "") ["0","-","+"]  
-    (List.foldl (·++·) "{" <| set.intersperse ",") ++ "}"
+def signToInt : Sign → Int
+    | .Pos => 1 
+    | .Zero => 0
+    | .Neg => -1
 
-instance : Repr SignSetBV where 
-    reprPrec := fun s _ => printSigns s.bits
+instance : LinearOrder Sign := LinearOrder.lift' signToInt (by intro; simp [signToInt]; grind)
 
+/-- info: + -/
+#guard_msgs in 
+#eval signFromInt 2
 
-
-def addSignSet (s1 : SignSetBV) (s2 : SignSetBV) : SignSetBV :=
-    let addArray : Array Int := #[4,1,1,2,2,4,7] --#[pos,zero,zero,neg,neg,pos,negposz]
-    let index := (s1.bits.add s2.bits).toNat
-    SignSetBV.mk (BitVec.ofNat 3 (addArray[index]!).toNat)
-
-#eval (-2 : Int).sign  
-
-def abstractSign (vals : List Int) : SignSetBV :=
-    match vals with 
-    |[] => {} 
-    |xs => let signs := xs.foldl (·.sign) 
-
-
-/-- info: {+} -/
+/-- info: 0 -/
 #guard_msgs in
-#eval addSignSet ({.Pos} : SignSetBV) ({.Pos} : SignSetBV)
+#eval signFromInt 0
+
+/-- info: - -/
+#guard_msgs in 
+#eval signFromInt (-3)
+
+
+def addSign (s1 : Sign) (s2 : Sign) : SignSet :=
+      match (s1,s2) with 
+      |(.Pos, .Neg) => {.Pos,.Neg,.Zero}
+      |(.Neg, .Pos) => {.Pos,.Neg,.Zero}
+      |(.Pos, .Zero) => {.Pos}
+      |(.Zero, .Pos) => {.Pos}
+      |(.Neg, .Zero) => {.Neg}
+      |(.Zero, .Neg) => {.Neg}
+      |(s1,_) => {s1} 
+
+def subSign (s1 : Sign) (s2 : Sign) : SignSet :=
+      match (s1,s2) with 
+      |(.Pos, .Neg) => {.Pos,.Zero}
+      |(.Neg, .Pos) => {.Neg}
+      |(.Pos, .Zero) => {.Pos}
+      |(.Zero, .Pos) => {.Neg}
+      |(.Neg, .Zero) => {.Neg}
+      |(.Zero, .Neg) => {.Pos}
+      |(.Zero, .Zero) => {.Zero}
+      |(_, _) => {.Neg,.Zero,.Pos}
+
+def mulSign (s1 : Sign) (s2 : Sign) : SignSet :=
+      match (s1,s2) with 
+      |(.Pos, .Neg) => {.Neg}
+      |(.Neg, .Pos) => {.Neg}
+      |(.Neg, .Neg) => {.Pos}
+      |(.Pos, .Pos) => {.Pos}
+      |(_, _) => {.Zero}
+
+def negSign : Sign ↪ Sign :=
+    ⟨(match · with 
+      |.Pos => .Neg
+      |.Neg => .Pos
+      |.Zero => .Zero), by intro; grind⟩ 
+      
+def modHelp (s1 : Sign) (s2 : Sign) : SignSet :=
+      match (s1,s2) with 
+      |(_, .Pos) => {.Zero,.Pos}
+      |(_, _) => {} -- Ill-defined
+
+-- Using the modulo operator simply maps everything to something positive or 0.
+def modSign (b1 : SignSet) (b2 : SignSet) : SignSet :=
+    (b1.product b2).biUnion (fun (s1, s2) =>
+      modHelp s1 s2)
+
+def ltSign (s1 : Sign) (s2: Sign) : Finset Bool :=
+    match (s1, s2) with 
+    |(.Neg,.Neg) 
+    |(.Pos,.Pos) => {true, false} 
+    |(.Zero,.Pos) 
+    |(.Neg,.Zero)
+    |(.Neg,.Pos) =>  {true} 
+    |(_,_) =>  { false }
+
+def leSign (s1 : Sign) (s2: Sign) : Finset Bool :=
+    match (s1, s2) with 
+    |(.Neg,.Neg) 
+    |(.Pos,.Pos) => {true, false}
+    |(.Zero,.Pos) 
+    |(.Neg,.Zero)
+    |(.Zero,.Zero) 
+    |(.Neg,.Pos) => {true}
+    |(_,_) => {false} 
+
+def compareHelp (cond: Condition)(s1: Sign) (s2: Sign) : Finset Bool :=
+    match cond with 
+    | .Ne => {(s1 != s2)}
+    | .Eq => {(s1 == s2)}
+    | .Lt => ltSign s1 s2
+    | .Gt => ltSign s2 s1 
+    | .Le => leSign s1 s2 
+    | .Ge => leSign s2 s1 
+    
+def compareSignSet (cond: Condition) (s1 : SignSet) (s2 : SignSet) : Finset Bool :=
+     (s1.product s2).biUnion (fun (s1, s2) =>
+      (compareHelp cond s1 s2))
+
+def SignSet.lift₁ (op : Sign → SignSet) (s1 : SignSet) : SignSet :=
+     s1.biUnion op
+ 
+def SignSet.lift₂  (bin_op : Sign → Sign → SignSet) (s1 s2: SignSet) : SignSet :=
+     (s1.product s2).biUnion bin_op.uncurry
 
 /-- info: {-} -/
-#guard_msgs in
-#eval addSignSet ({.Neg} : SignSetBV) ({.Zero} : SignSetBV)
-
-/-- info: {0,-,+} -/
 #guard_msgs in 
-#eval addSignSet ({.Neg} : SignSetBV) ({.Pos} : SignSetBV)
+#eval SignSet.lift₂ addSign ({Sign.Neg} : SignSet) ({Sign.Neg, Sign.Zero} : SignSet)
 
-/-- info: {0} -/
+/-- info: {0, +, -} -/
 #guard_msgs in
-#eval addSignSet ({.Zero} : SignSetBV) ({.Zero} : SignSetBV)
+#eval SignSet.lift₂ subSign ({Sign.Neg} : SignSet) ({Sign.Neg, Sign.Zero} : SignSet)
+
+/-- info: {+, 0} -/
+#guard_msgs in
+#eval SignSet.lift₂ mulSign ({Sign.Neg} : SignSet) ({Sign.Neg, Sign.Zero} : SignSet)
+
+/-- info: {+, 0, -} -/
+#guard_msgs in 
+#eval SignSet.lift₂ addSign {.Pos,.Zero} {.Neg}
 
 
-#eval addSignSet ({.Pos,.Neg,.Zero} : SignSetBV) ({.Pos} : SignSetBV)
-
-abbrev SignSet := Finset Sign
-
-
-def addSign (b1 : BitVec 3) (b2 : BitVec 3) : SignSetBV :=
-    let pos : BitVec 3 := BitVec.ofNat 3 4 
-    let neg : BitVec 3:= BitVec.ofNat 3 2 
-    let zero : BitVec 3 := BitVec.ofNat 3 1
-    let negposz : BitVec 3 := BitVec.ofNat 3 7
-    let addArray : Array (BitVec 3) := #[pos,zero,zero,neg,neg,pos,negposz]
-    SignSetBV.mk addArray[(b1.add b2).toNat]!
+instance : Arithmetic Sign Finset where 
+    add := addSign
+    sub := subSign
+    mul := mulSign 
+    div := mulSign
+    mod := mulSign
+    neg := negSign
+    toList := Finset.sort
+    ofList := List.toFinset 
+    toList_ofList := by simp 
 
 
---def addSignSet (s1: SignSetBV) (s2: SignSetBV) : SignSetBV :=
-    
+def abstractSign (bc : BytecodeValue) : BytecodeValueA Sign :=
+    match bc.value with 
+    |.ValInt i => ⟨.ValInt (signFromInt i)⟩ 
+    |.ValChar i => ⟨.ValChar (signFromInt i)⟩ 
+    |.ValBool i => ⟨.ValBool (signFromInt i)⟩ 
+    |.ValShort i => ⟨.ValShort (signFromInt i)⟩ 
+    |.ValRef i => ⟨.ValRef (signFromInt i)⟩ 
+    |.Dummy  => ⟨.Dummy⟩ 
+    |.ValClass s => ⟨.ValClass s⟩
+ 
+def signSetContains (bc: BytecodeValue) (signset : SignSet) : Bool :=
+    match bc.value with
+    |.ValInt i 
+    |.ValChar i 
+    |.ValBool i 
+    |.ValShort i 
+    |.ValRef i => signFromInt i ∈ signset
+    |_ => True   
 
-/- #eval addArray[(pos.add neg).toNat] -/
-/- #eval addArray[(addArray[(zero.add zero).toNat].add neg).toNat] -/
-/- #eval addArray[(neg.add zero).toNat] -/
 
-def signset1 : SignSetBV := SignSetBV.mk (BitVec.ofNat 3 4)
-def signset2 : SignSetBV := {Sign.Neg}
+def concreteSignSet (a : SignSet) : Set BytecodeValue:=
+  {b : BytecodeValue | signSetContains b a} 
 
-#eval signset1 
-#eval signset2
+def signSetCheck (cond : Condition) (s1 s2 : BytecodeValueA Sign) : Err (Finset Bool) := do
+    let v1 ← getValue s1 
+    let v2 ← getValue s2
+    return (compareHelp cond v1 v2)
+
+theorem SignSet.le_refl (a : SignSet) : (a ∪ a) <= a := by
+    simp
+
+theorem SignSet.or_self_iff (a : SignSet) : a ∪ a = a := by 
+    simp  
+
+theorem signset_le_trans (a b c : SignSet) 
+    ( h1 : (a <= b))
+    ( h2 : (b <= c)) : (a <= c) := by 
+      simp
+      trans b 
+      . exact h1 
+      exact h2  
+
+theorem signset_le_refl (a : SignSet) : (a <= a) := by 
+      simp
+
+theorem signset_le_antisymm (a b : SignSet) (h1: a <= b) (h2: b <= a) : (a = b) := by 
+    exact Finset.Subset.antisymm h1 h2
+  
+
+theorem signset_le_sup_left (a b : SignSet)  : (a <= a ∪ b) := by 
+    simp 
+
+theorem signset_le_sup_right (a b : SignSet) : (b <= a ∪ b) := by 
+    simp   
+
+theorem signset_sup_le (a b c : SignSet) (h1: a <= c) (h2: b <= c) : (a ∪ b <= c) := by 
+    simp 
+    trans c 
+    . apply Finset.union_subset h1 h2
+    apply Finset.subset_of_eq 
+    apply refl 
+
+theorem signset_inf_le_left (a b : SignSet) : (a ∩ b <= a) := by 
+    simp 
+
+theorem signset_inf_le_right (a b : SignSet) : (a ∩ b <= b) := by 
+    simp 
+
+theorem signset_le_inf (a b c : SignSet) (h1: a <= b) (h2: a <= c) : (a <= b ∩ c) := by 
+    trans a 
+    . apply le_refl
+    apply Finset.subset_inter
+    . apply Finset.subset_of_le 
+      apply h1 
+    apply h2
+
+instance LatticeSignSet : Lattice (Finset Sign) where 
+    le x y := x <= y
+    le_refl := signset_le_refl
+    le_trans := signset_le_trans
+    le_antisymm := signset_le_antisymm
+    sup x y := x ∪ y
+    le_sup_left := signset_le_sup_left
+    le_sup_right := signset_le_sup_right
+    sup_le := signset_sup_le 
+    inf x y :=  x ∩ y 
+    inf_le_left :=  signset_inf_le_left
+    inf_le_right :=  signset_inf_le_right
+    le_inf :=  signset_le_inf 
 
 
--- Lav et lookup table til de forskellige operationer
--- så læg bit vektorerne sammen og deres samlede værdi kan så bruges som index ind i add-array 
+instance : Domain Finset where 
+    instLattice := by apply Finset.instLattice 
 
-/- #eval signset2 <= signset2 -/
-/- #eval signset2 ⊔ signset3 -/
+
+
+instance SignAbstraction : Abstraction Sign Finset where 
+    abstract := abstractSign
+    concrete := concreteSignSet
+    contains := signSetContains
+    check := signSetCheck 
+
+
+theorem galois_connection1 (a b : ℤ) : signFromInt (a + b) ∈  addSign (signFromInt a) (signFromInt b) := by
+  simp [signFromInt, addSign]
+  split_ifs <;> subst_eqs
+  all_goals try simp_all 
+  all_goals omega
+   
+  
+
+/- theorem galois_connection2 (a b : ℤ) (h: a <= b) : (signFromInt a) ⊆ (signFromInt b) := by  -/
+/-   simp [signFromInt] -/
+
+
+  

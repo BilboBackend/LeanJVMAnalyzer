@@ -59,7 +59,6 @@ def parseMethod (s : String) : Method:=
     let out := parseOutType methoddata
     Method.mk classname name args out 
 
-
 def matchInputType (i : String) : KindEnum :=
     match i with 
     |"I" =>  .KindInt
@@ -69,8 +68,6 @@ def matchInputType (i : String) : KindEnum :=
     |"[Z" => .KindBoolArr 
     |"[C" => .KindCharArr
     |_ =>  .KindInt
-
-
 
 def parseInputTypes (input: List String) : List KindEnum :=
     match input with 
@@ -106,9 +103,8 @@ def matchInputValue (kindval : KindEnum × String): BytecodeValue :=
 #guard_msgs in
 #eval (parseMethod "jpamb.Cases.Simple.assertFalse()V").isValid
 
-
 /--
-info: some [InputValue.InVal ValueEnum.ValInt 3, InputValue.InVal ValueEnum.ValInt 2, InputValue.InVal ValueEnum.ValInt 12]
+info: some [InputValue.InVal ValueEnumA.ValInt 3, InputValue.InVal ValueEnumA.ValInt 2, InputValue.InVal ValueEnumA.ValInt 12]
 -/
 #guard_msgs in
 #eval parseInput "(12,2,3)"

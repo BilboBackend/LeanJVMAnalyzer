@@ -7,12 +7,12 @@ open Lean.Parser
 
 def parseBool (s : String) : Option BytecodeValue :=
     match s with 
-    |"true" => some ⟨ValueEnum.ValBool 1⟩ 
-    |"false" => some ⟨ValueEnum.ValBool 0⟩ 
+    |"true" => some ⟨.ValBool 1⟩ 
+    |"false" => some ⟨.ValBool 0⟩ 
     |_ => none
 
 def parseInt (s : String) : Option BytecodeValue :=
-    s.toInt? >>= fun i => some ⟨ValueEnum.ValInt i⟩ 
+    s.toInt? >>= fun i => some ⟨.ValInt i⟩ 
 
 
 def parseChar (s : String) : Option BytecodeValue := 
@@ -22,7 +22,7 @@ def parseChar (s : String) : Option BytecodeValue :=
         let inner := s.drop 1 |>.dropRight 1
         let c := inner.front
         match c.isAlpha with 
-        |true => some ⟨ValueEnum.ValChar c.toNat⟩ 
+        |true => some ⟨.ValChar c.toNat⟩ 
         |false => none
 
 def parseValue (s : String) : Option BytecodeValue := 
@@ -31,17 +31,17 @@ def parseValue (s : String) : Option BytecodeValue :=
 def splitTopLevel (s : String) (sep : Char) (open_ : Char) (close : Char) : List String :=
     let rec loop (cs : List Char) (acc : List String) (curr : List Char) (depth : Nat) :=
         match cs with
-        | [] => (acc ++ [String.mk curr])
+        | [] => (acc ++ [String.ofList curr])
         | c :: rest =>
           if c = sep && depth = 0 then
-            loop rest (acc ++ [String.mk curr]) [] depth
+            loop rest (acc ++ [String.ofList curr]) [] depth
           else if c = open_ then
             loop rest acc (curr ++ [c]) (depth + 1)
           else if c = close then
             loop rest acc (curr ++ [c]) (depth - 1)
           else
             loop rest acc (curr ++ [c]) depth
-  loop s.data [] [] 0
+  loop s.toList [] [] 0
 
 def unrollArray (bv : Option BytecodeValue) : Array BytecodeValue :=
     match bv with
@@ -68,7 +68,7 @@ def parseType (s : String) : Option InputValue :=
     | (_,_) => none
 
 def removeWhitespace (s: String) : String :=
-    String.mk (s.toList.filter (· != ' '))
+    String.ofList (s.toList.filter (· != ' '))
 
 
 def parseInput (s: String) : Option (List InputValue) :=
@@ -86,34 +86,35 @@ def parseInput (s: String) : Option (List InputValue) :=
         else none
 
 /--
-info: some [InputValue.InArray #[ValueEnum.ValInt 1, ValueEnum.ValInt 2], InputValue.InVal ValueEnum.ValInt 1]
+info: some [InputValue.InArray #[ValueEnumA.ValInt 1, ValueEnumA.ValInt 2], InputValue.InVal ValueEnumA.ValInt 1]
 -/
 #guard_msgs in 
 #eval parseInput "(1,[I:1,2])"
 
 /--
 info: some [InputValue.InArray
-   #[ValueEnum.ValChar 104, ValueEnum.ValChar 101, ValueEnum.ValChar 108, ValueEnum.ValChar 108, ValueEnum.ValChar 111],
- InputValue.InVal ValueEnum.ValInt 1]
+   #[ValueEnumA.ValChar 104, ValueEnumA.ValChar 101, ValueEnumA.ValChar 108, ValueEnumA.ValChar 108,
+     ValueEnumA.ValChar 111],
+ InputValue.InVal ValueEnumA.ValInt 1]
 -/
 #guard_msgs in
 #eval parseInput "(1,[C:'h','e','l','l','o'])"
 
-/-- info: some [InputValue.InVal ValueEnum.ValInt 0, InputValue.InVal ValueEnum.ValInt 0] -/
+/-- info: some [InputValue.InVal ValueEnumA.ValInt 0, InputValue.InVal ValueEnumA.ValInt 0] -/
 #guard_msgs in
 #eval parseInput "(0, 0)"
-/-- info: some (InputValue.InVal ValueEnum.ValInt 1) -/
+/-- info: some (InputValue.InVal ValueEnumA.ValInt 1) -/
 #guard_msgs in 
 #eval parseType "1"
 
-/-- info: some (InputValue.InVal ValueEnum.ValBool 1) -/
+/-- info: some (InputValue.InVal ValueEnumA.ValBool 1) -/
 #guard_msgs in 
 #eval parseType "true"
 
-/-- info: some (InputValue.InVal ValueEnum.ValChar 65) -/
+/-- info: some (InputValue.InVal ValueEnumA.ValChar 65) -/
 #guard_msgs in
 #eval parseType "'A'"
 
-/-- info: some #[ValueEnum.ValInt 1, ValueEnum.ValInt 2, ValueEnum.ValInt 3] -/
+/-- info: some #[ValueEnumA.ValInt 1, ValueEnumA.ValInt 2, ValueEnumA.ValInt 3] -/
 #guard_msgs in 
 #eval parseArray "[I:1,2,3]"
