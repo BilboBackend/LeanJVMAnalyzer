@@ -30,16 +30,25 @@ infixl:70 " %ₐ " => Arithmetic.mod
 class Domain (β : Type → Type) where 
   instLattice : ∀ a [DecidableEq a], Lattice (β a)
 
-class Abstraction (α : Type) (β : outParam (Type → Type)) [Domain β] extends 
+class Abstraction (α : Type) (β : outParam (Type → Type)) [Domain β]  extends 
   Arithmetic α β, 
   BEq α where 
     concrete : β α -> Set BytecodeValue
     abstract : BytecodeValue -> BytecodeValueA α
     contains : BytecodeValue ->  (β  α) -> Bool
     check : Condition -> BytecodeValueA α -> BytecodeValueA α -> Err (Finset Bool)
+    AbsArray : Type 
+    array_repr : Repr AbsArray
+    array_new : AbsArray 
+    array_size : AbsArray -> β α 
+    array_get : AbsArray -> α -> Option (β α) × Option (Err α)
+    array_set : AbsArray -> α -> α -> Option AbsArray 
+    array_fromConcreteArray : Array BytecodeValue -> AbsArray
+    array_canIndexIntoArray : AbsArray -> α -> Finset Bool 
 
+instance (α β) [Domain β]  [A : Abstraction α β] : Repr A.AbsArray := A.array_repr
 
-structure GenFrame (α β) [Domain β] [Abstraction α β]  where 
+structure GenFrame (α β) [Domain β]  [Abstraction α β]  where 
     stack : List (BytecodeValueA α)
     locals : Array (BytecodeValueA α)
     code : Code 
@@ -49,7 +58,7 @@ structure GenFrame (α β) [Domain β] [Abstraction α β]  where
 namespace GenFrame 
 
 
-variable  {α : Type} {β : outParam (Type → Type)} [Domain β] [Abstraction α β]
+variable  {α : Type} {β : outParam (Type → Type)} [Domain β]  [Abstraction α β] 
 
 def stackPush (frame : GenFrame α β) (v : BytecodeValueA α) : (GenFrame α β) := 
     {frame with stack := v :: frame.stack} 
@@ -84,15 +93,31 @@ def bc (frame : GenFrame α β) : Except String Operation :=
 end GenFrame 
 
 
-inductive AbstractHeapElem (α β) [Domain β] [Abstraction α β] where | Arr (a : Array BytecodeValue)| Class (b : BytecodeValue) deriving Repr
 
-structure Stateful (α : Type) (β : outParam (Type → Type))  [Domain β] [Abstraction α β] where 
-    heap : Array HeapElem  
+-- Here we let an entire array be represented by one abstract value (A gross over-approximation)
+inductive AbstractHeapElem (α β) [Domain β]  [A : Abstraction α β] where | Arr (a : A.AbsArray) | Class (b : BytecodeValueA α) deriving Repr
+
+structure AbstractHeap (α β) [Domain β]  [Abstraction α β] where 
+    heap : Array (AbstractHeapElem α β) 
+    deriving Repr
+
+def AbstractHeap.push {α β}  [Domain β]  [Abstraction α β] (h: AbstractHeap α β ) (elem: AbstractHeapElem α β) : AbstractHeap α β × Ref :=
+    let newref : Ref := h.heap.size
+    let h' := h.heap.push elem
+    (⟨h'⟩ , newref) 
+
+def AbstractHeap.set {α β}  [Domain β]  [Abstraction α β] (h: AbstractHeap α β) (ref: Ref) (elem: AbstractHeapElem α β) : AbstractHeap α β :=
+    let h' := h.heap.set! ref elem
+    ⟨h'⟩ 
+
+
+structure Stateful (α : Type) (β : outParam (Type → Type))  [Domain β]  [Abstraction α β] where 
+    heap : AbstractHeap α β 
     frames : Array (GenFrame α β)
 
-abbrev ErrASt (α : Type) (β : outParam (Type → Type))  [Domain β] [Abstraction α β] := Err (List (Stateful α β))
+abbrev ErrASt (α : Type) (β : outParam (Type → Type))  [Domain β]  [Abstraction α β] := Err (List (Stateful α β))
 
-def printTerminalStates (α : Type) (β : outParam (Type → Type)) [Domain β] [Abstraction α β]
+def printTerminalStates (α : Type) (β : outParam (Type → Type)) [Domain β]  [Abstraction α β]
   (terminal : List (Err (Stateful α β))) : List (Err String) :=
     terminal.map (fun t => match t with 
       |.ok _ => .ok "Did not terminate"
@@ -100,7 +125,7 @@ def printTerminalStates (α : Type) (β : outParam (Type → Type)) [Domain β] 
 
 namespace Stateful
 
-variable  {α : Type} {β : outParam (Type → Type)} [Domain β] [Abstraction α β]
+variable  {α : Type} {β : outParam (Type → Type)} [Domain β]  [Abstraction α β]
 
 def getFrame (s : Stateful α β) : Err (GenFrame α β) :=
     match s.frames[0]? with 
@@ -113,7 +138,8 @@ def updateStackFrame (frame : GenFrame α β) (state : Stateful α β) : Statefu
 end Stateful
 
 
-variable  {α : Type} {β : outParam (Type → Type)}[Fintype α] [Monad β] [Domain β] [A : Abstraction α β]
+variable  {α : Type} {β : (Type → Type)} [Fintype α] [Monad β] [Domain β]  [A : Abstraction α β]
+
 
 def initializeAbstractInputValue 
     (st : Err (Stateful α β)) 
@@ -124,24 +150,23 @@ def initializeAbstractInputValue
     match s.frames[0]? with 
     | some f =>
         match input with 
-        |.InArray arr => 
-            let newref : BytecodeValue := ⟨ValueEnumA.ValRef s.heap.size.toInt64.toInt⟩
-            let newstate := {s with heap := s.heap.push (HeapElem.Arr arr)}
-            let abs : BytecodeValueA α := A.abstract newref
-            return newstate.updateStackFrame (f.stackPush abs)
+        |.InArray conArr => 
+            let (newHeap,newRef) := s.heap.push (AbstractHeapElem.Arr (A.array_fromConcreteArray conArr))
+            let newstate := {s with heap := newHeap}
+            return newstate.updateStackFrame (f.stackPush ⟨.ValRef newRef⟩ )
         |.InVal v => return s.updateStackFrame {f with locals := #[(A.abstract v : BytecodeValueA α)] ++ f.locals}
     | none => 
         match input with 
-        |.InArray arr => 
-            let newref := A.abstract ⟨ValueEnumA.ValRef s.heap.size⟩ 
-            let newframe := GenFrame.mk [] #[newref] code 0 none --{f with stack := newref :: f.stack} 
-            return {s with heap := s.heap.push (HeapElem.Arr arr)}.updateStackFrame newframe
+        |.InArray conArr => 
+            let (newHeap,newRef) := s.heap.push (AbstractHeapElem.Arr (A.array_fromConcreteArray conArr))
+            let newframe := GenFrame.mk [] #[⟨.ValRef newRef⟩ ] code 0 none --{f with stack := newref :: f.stack} 
+            return {s with heap := newHeap}.updateStackFrame newframe
         |.InVal v => 
             return s.updateStackFrame (GenFrame.mk [] #[A.abstract v] code 0 none) --{f with stack := newref :: f.stack}
 
 
 def initializeStateful (input : Option (List InputValue)) (code : Code) : Err (Stateful α β) := 
-    let initstate := Stateful.mk #[] #[]
+    let initstate := Stateful.mk ⟨#[]⟩ #[]
     match input with 
     |some args => 
         List.foldl (fun x y => initializeAbstractInputValue x y code) (pure initstate) args
@@ -225,7 +250,7 @@ def abstractStepReturn  (s : Stateful α β) (type : Option BytecodeType): ErrAS
         | some f => return [newstackframe.updateStackFrame (f.stackPush v |> .incrpc)]
     | (_,_) => throw s!"Cannot return on operation"
 
-inductive InnerValue (α : Type) where | val : α -> InnerValue α | ref : Int -> InnerValue α 
+inductive InnerValue (α : Type) where | val : α -> InnerValue α | ref : Nat -> InnerValue α 
 
 def getValue (b : BytecodeValueA α) : Err (InnerValue α) := 
     match b.value with
@@ -261,17 +286,6 @@ def genericArithmetic (b1 b2 : BytecodeValueA α) (operant : String) : Err (List
         | o => throw s!"Undefined arithmetic operant {o}"
     | _, _ => throw "Tried to perform arithmetic on abstract value and reference!"
  
-/- def OLDgenericArithmetic (b1 b2 : BytecodeValueA α) (operant : String) : Err α := do   -/
-/-     let v1 ← getValue b1  -/
-/-     let v2 ← getValue b2 -/
-/-     match operant with  -/
-/-     | "add" => return v1 +ₐ v2  -/
-/-     | "sub" => return v1 -ₐ v2 -/
-/-     | "mul" => return v1 *ₐ v2 -/
-/-     | "rem" => return v1 %ₐ v2 -/
-/-     | "div" => if (A.abstract ⟨ .ValInt 0⟩) == ⟨.ValInt v2⟩ then throw "divide by zero" else return v1 /ₐ  v2  -/
-/-     | o => throw s!"Undefined arithmetic operant {o}" -/
-   
 
 def abstractStepBinary (s : Stateful α β) (type: BytecodeType) (opr: String)  : ErrASt α β := do
     let frame <- s.getFrame 
@@ -313,10 +327,9 @@ def abstractStepDup (s : Stateful α β) (words : Int) : ErrASt α β := do
 
 def abstractStepNew (s : Stateful α β)  («class»: String) : ErrASt α β := do
     let frame <- s.getFrame 
-    let newref := .ValRef (s.heap.size)
-    let newstate := s.updateStackFrame (frame.stackPush (Abstraction.abstract ⟨newref⟩)).incrpc
-    let newval := HeapElem.Class ⟨.ValClass ⟨.Class,  «class»⟩⟩  
-    return [{newstate with heap := newstate.heap.push newval}]
+    let (newHeap, newRef) := s.heap.push (AbstractHeapElem.Class ⟨.ValClass ⟨.Class,  «class»⟩⟩)  
+     let newstate := s.updateStackFrame (frame.stackPush ⟨.ValRef newRef⟩).incrpc
+    return [{newstate with heap := newHeap}]
 
 def abstractStepInvoke (s : Stateful α β) 
     (code : JPAMB) (access : BytecodeAccess) 
@@ -347,68 +360,83 @@ def abstractStepNewArray (s : Stateful α β) (type : BytecodeType) (dim : Nat) 
     let frame <- s.getFrame 
     match frame.stack[0]? with 
     | some bcv => 
-            match (createDummyArray 1) with
-            | arr =>
-                let newref := Abstraction.abstract ⟨.ValRef s.heap.size⟩ 
-                let newarray := HeapElem.Arr arr --should it be dim here?
-                let newframe := frame.stackPush newref |> .incrpc
-                return [{s with heap := s.heap.push newarray}.updateStackFrame newframe ]
-            --| .error e => throw e
+            let (newHeap, newRef) := s.heap.push (AbstractHeapElem.Arr A.array_new)
+            let newframe := frame.stackPush ⟨.ValRef newRef⟩ |> .incrpc
+            return [{s with heap := newHeap}.updateStackFrame newframe ]
     | none => throw s!"No count defined for NewArray"
 
 
-def abstractUpdateHeapArray (s : Stateful α β) (ref : Nat) (index : Int) (value : α) : ErrASt α β :=
-    -- throw "UpdateHeapArray not implemented"
+instance : LT Ref := inferInstanceAs (LT Nat)
+
+instance : GetElem (AbstractHeap α β) Ref (AbstractHeapElem α β)
+    (fun h i => i < h.heap.size) where
+      getElem h i h_bounds :=
+      h.heap[i.toNat]
+
+instance : GetElem? (AbstractHeap α β) Ref (AbstractHeapElem α β) (fun h i => i < h.heap.size) where
+  getElem? h i := h.heap[i.toNat]?
+
+def abstractUpdateHeapArray (s : Stateful α β) (ref : Ref) (index : α) (value : α) : ErrASt α β :=
     match s.heap[ref]? with 
     | none => throw "null pointer"
     | some h => 
         match h with 
         |.Class _ => throw "Trying to access non-array heap value" 
         |.Arr arr => 
-            match arr[index.toNat]? with 
+            let optSet := A.array_set arr index value
+            match optSet with 
             | none => throw s!"out of bounds" --, index: {index}, size: {arr.size}" 
-            | some _ => 
-                let newarr := HeapElem.Arr <| arr.set! index.toNat sorry -- (Abstraction.concrete value)
-                return [{s with heap := s.heap.set! ref newarr }]--s.heap.setIfInBounds ref newarr} 
+            | some newArr => 
+                return [{s with heap := s.heap.set ref (AbstractHeapElem.Arr newArr)}]
 
 def abstractStepArrayStore (s : Stateful α β) (type : BytecodeType) : ErrASt α β := do
-    throw "ArrayStore not implemented"
-    /- let (val, index, arrayref, rest) <- (← s.getFrame).stackPop₃  -/
-    /- match ((Abstraction.concrete arrayref).value, (Abstraction.concrete index).value) with  -/
-    /- | (.ValRef r, .ValInt i) =>  -/
-    /-     abstractUpdateHeapArray (s.updateStackFrame rest.incrpc) r i val -/
-    /- | (_,_) => throw "Arrayref is not of type reference probably due to wrong concretization" -/
+    let (valo, indexo, arrayrefo, rest) <- (← s.getFrame).stackPop₃ 
+    let arrayref ← getValue arrayrefo
+    let index ← getValue indexo
+    let val ← getValue valo
+    match (arrayref, index, val) with 
+    | (.ref r, .val i, .val v) => 
+        abstractUpdateHeapArray (s.updateStackFrame rest.incrpc) r i v
+    | (_,_) => throw "Arrayref is not a reference"
 
 def abstractStepArrayLength (s : Stateful α β) : ErrASt α β := do
-    throw "ArrayLength not implemented"
-    /- let frame <- s.getFrame  -/
-    /- let (arrayref,rest) <- frame.stackPop₁  -/
-    /- match (Abstraction.concrete arrayref).value with  -/
-    /- |.ValRef r => -/
-    /-     match s.heap[r]? with  -/
-    /-     | none => throw "null pointer" -/
-    /-     | some (HeapElem.Arr arr) =>  -/
-    /-         let length := Abstraction.abstract ⟨ValueEnum.ValInt arr.size.toInt64.toInt⟩  -/
-    /-         return [s.updateStackFrame (rest.stackPush α length).incrpc] -/
-    /-     | some _ => throw "Not a valid array reference" -/
-    /- | _ => throw "Failed to concretize arrayreference from {reprStr arrayref} possibly due to wrong concretization" -/
+    let frame <- s.getFrame 
+    let (arrayref,rest) <- frame.stackPop₁ 
+    match arrayref.value with 
+    |.ValRef  r =>
+        match s.heap[r]? with 
+        | none => throw "null pointer"
+        | some (AbstractHeapElem.Arr arr) => 
+            let lengths := A.array_size arr
+            let values := (A.toList lengths).map (fun v => ⟨.ValInt v⟩)
+            return values.map (fun v => s.updateStackFrame (rest.stackPush v).incrpc)
+        | some _ => throw "Not a valid array reference"
+    | _ => throw "Trying to use {reprStr arrayref} as a heap reference"
 
+def abstractStepArrayLoadHelp (s : Stateful α β) (rest : GenFrame α β) (aarr : Option (β α)) : ErrASt α β := do
+    match aarr with 
+    |none => throw "out of bounds"
+    |some arr => 
+        let values := (A.toList arr).map (fun v => ⟨.ValInt v⟩)
+        return (values.map (fun v => s.updateStackFrame (rest.stackPush v).incrpc)) 
+                 
 def abstractStepArrayLoad (s : Stateful α β) (type : BytecodeType) : ErrASt α β := do
-    throw "ArrayLoad not implemented"
-    /- let frame <- s.getFrame  -/
-    /- let (index,arrayref,rest) <- frame.stackPop₂ α  -/
-    /- match ((Abstraction.concrete arrayref).value, (Abstraction.concrete index).value) with -/
-    /- |(.ValRef r,.ValInt i) =>  -/
-    /-     match s.heap[r]? with  -/
-    /-     | none => throw "null pointer" -/
-    /-     | some (HeapElem.Arr arr) =>  -/
-    /-         match arr[i.toNat]? with  -/
-    /-         | none => throw "out of bounds" -/
-    /-         | some v =>  -/
-    /-             let aval := Abstraction.abstract v -/
-    /-             return [s.updateStackFrame (rest.stackPush α aval).incrpc] -/
-    /-     | some _ => throw s!"Not an array at reference" -/
-    /- | _ => throw "Concretized values are not valid" -/
+    let frame <- s.getFrame 
+    let (index,arrayref,rest) <- frame.stackPop₂ 
+    match arrayref.value, index.value with
+    |.ValRef r,.ValInt i => 
+        match s.heap[r]? with 
+        | none => throw "null pointer"
+        | some (AbstractHeapElem.Arr arr) => 
+            let possibilities := A.array_get arr i
+            match possibilities with 
+            |(some v, none) => abstractStepArrayLoadHelp s rest v 
+            |(some v, some e) =>
+                  abstractStepArrayLoadHelp s rest v  
+                  --abstractStepArrayLoadHelp s rest none
+            |(_ , _) => throw "out of bounds"  
+        | some _ => throw s!"Not an array at reference"
+    | _ , _ => throw "Concretized values are not valid"
 
 def abstractStepIncr (s : Stateful α β) (index : Nat) (amount : Int): ErrASt α β := do 
     let frame <- s.getFrame 
@@ -472,7 +500,7 @@ def abstractStep (s : Stateful α β) (code : JPAMB) : ErrASt α β := do
 
 -- Limit is set in the counter
 def interpretMany 
-  {α : Type} [Abstraction α β] 
+  {α : Type}  [Abstraction α β] 
   (stf : List (Err (Stateful α β))) 
   (code : JPAMB) (intermediate_res : List String) 
   (counter : Nat) : List String := 

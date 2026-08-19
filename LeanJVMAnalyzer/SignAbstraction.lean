@@ -7,13 +7,14 @@ import Mathlib.Tactic
 
 
 inductive Sign where | Pos | Neg | Zero 
-    deriving DecidableEq,Ord, Fintype
+    deriving DecidableEq, Ord, Fintype, Repr
 
 
 abbrev SignSet := Finset Sign
 
 instance : LE SignSet where
     le x y := x ⊆ y
+
 
 instance : Singleton Sign SignSet where 
     singleton := fun e => insert e {}
@@ -211,7 +212,7 @@ def signSetContains (bc: BytecodeValue) (signset : SignSet) : Bool :=
     |.ValChar i 
     |.ValBool i 
     |.ValShort i 
-    |.ValRef i => signFromInt i ∈ signset
+    |.ValRef i => signFromInt i.toInt64.toInt ∈ signset
     |_ => True   
 
 
@@ -295,24 +296,72 @@ instance : Domain Finset where
     instLattice := by apply Finset.instLattice 
 
 
-
-instance SignAbstraction : Abstraction Sign Finset where 
-    abstract := abstractSign
-    concrete := concreteSignSet
-    contains := signSetContains
-    check := signSetCheck 
-
-
 theorem galois_connection1 (a b : ℤ) : signFromInt (a + b) ∈  addSign (signFromInt a) (signFromInt b) := by
   simp [signFromInt, addSign]
   split_ifs <;> subst_eqs
   all_goals try simp_all 
   all_goals omega
    
-  
-
 /- theorem galois_connection2 (a b : ℤ) (h: a <= b) : (signFromInt a) ⊆ (signFromInt b) := by  -/
 /-   simp [signFromInt] -/
 
+structure SignArray where 
+    content : SignSet
+    size : SignSet
 
-  
+instance : Repr Signarray where
+    reprPrec arr _ := 
+      --let content := arr.content.toList
+      Std.Format.text <| "hello"
+
+def array_repr := repr SignArray
+
+def array_new : SignArray := SignArray.mk {} {.Zero} 
+
+def array_size (aarr : SignArray) : SignSet := aarr.size 
+
+def array_set (aarr : SignArray) (index : Sign) (value : Sign) : Option SignArray := 
+    if index ∈ aarr.size then some (SignArray.mk (aarr.content ∪ {value}) {.Pos})
+    else none
+ 
+def array_canIndexIntoArray (aarr : SignArray) (index : Sign) : Finset Bool := 
+    if index ∈ aarr.size then {true,false} else {false}
+
+def array_get (aarr : SignArray) (index : Sign) : Option SignSet × Option (Err Sign) := 
+    match index with 
+    |.Zero => (aarr.content, none)
+    |.Pos => (aarr.content , some (throw "out of bounds"))
+    |.Neg => (none, some (throw "out of bounds"))
+
+
+def abstractInner (bv : BytecodeValue) : SignSet :=
+    match bv.value with 
+    |.ValInt v => {signFromInt v}
+    |.ValShort v => {signFromInt v}
+    |.ValBool v => {signFromInt v}
+    |.ValChar v => {signFromInt v}
+    |_ => {}
+
+
+def array_fromConcreteArray (arr : Array BytecodeValue): SignArray := 
+    let content := arr.toList.foldl (fun a v => a ∪ (abstractInner v)) {}
+    let size := {signFromInt arr.size}
+    SignArray.mk content size
+-- #eval ({Sign.Pos, Sign.Neg} : SignSet) ⊆ ({Sign.Pos, Sign.Zero} : SignSet)
+
+instance SignAbstraction : Abstraction Sign Finset where
+    abstract := abstractSign
+    concrete := concreteSignSet
+    contains := signSetContains
+    check := signSetCheck 
+    AbsArray := SignArray
+    array_repr := inferInstance 
+    array_new := array_new
+    array_size := array_size
+    array_get := array_get
+    array_set := array_set
+    array_fromConcreteArray := array_fromConcreteArray
+    array_canIndexIntoArray := array_canIndexIntoArray
+
+
+

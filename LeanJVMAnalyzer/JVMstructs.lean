@@ -87,9 +87,14 @@ structure  RefClass where
      name : String
      deriving ToJson, FromJson, Repr, BEq
 
+def Ref := Nat 
+    deriving ToJson, Repr, BEq, ToString
+
+def Ref.toNat (r : Ref) : Nat := r
+
 inductive ValueEnumA (α : Type*)  where
     | ValClass (c : RefClass)
-    | ValRef (i : Int)
+    | ValRef (i : Ref)
     | ValInt (i : α)
     | ValChar (c : α)
     | ValBool (b : α)
@@ -277,7 +282,7 @@ def BytecodeValueFromJson (j : Json) : Except String BytecodeValue := do
     |(KindEnum.KindBool, .ValInt i) => pure ⟨.ValBool i⟩
     |(KindEnum.KindChar, .ValInt i) => pure ⟨.ValChar i⟩
     |(KindEnum.KindShort, .ValInt i) => pure ⟨.ValShort i⟩
-    |(KindEnum.Ref, .ValInt i) => pure ⟨.ValRef i.toNat⟩
+    |(KindEnum.Ref, .ValInt i) => pure ⟨.ValRef i.toNat⟩ 
     |(KindEnum.Class, .ValClass c) => pure ⟨.ValClass c⟩
     |(ek,ev) => throw s!"Failed to instantiate BytecodeVal from {reprStr ek} and {reprStr ev}"
 
