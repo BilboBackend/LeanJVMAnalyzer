@@ -21,7 +21,7 @@ instance : Repr JVMFrame where
         let currCode := match frame.code.bytecode[frame.pc]? with 
                     |none => "Program counter out of bounds\n" 
                     |some x => reprStr x ++ "\n" 
-        Std.Format.text (List.foldl (· ++ ·) "" [strStack, strLocals, currCode, strPC])
+        Std.Format.text (List.foldl (· ++ ·) "" [strStack, strLocals, currCode, strPC]) 
  
 namespace JVMFrame 
 
@@ -63,13 +63,16 @@ structure Heap where
     deriving Repr
 
 def Heap.push (h: Heap) (elem: HeapElem) : Heap × Ref :=
-    let newref : Ref := h.heap.size
+    let newref : Ref := .Ptr h.heap.size
     let h' := h.heap.push elem
     (⟨h'⟩ , newref) 
 
-def Heap.set (h: Heap) (ref: Ref) (elem: HeapElem ) : Heap :=
-    let h' := h.heap.set! ref elem
-    ⟨h'⟩ 
+def Heap.set (h: Heap) (ref: Ref) (elem: HeapElem ) : Err Heap :=
+    match ref with 
+    |.NullPtr => throw "null pointer"
+    |.Ptr r =>
+        let h' := h.heap.set! r elem
+        return ⟨h'⟩ 
 
 structure State where 
     heap : Heap
@@ -79,8 +82,11 @@ structure State where
 instance : Repr State where 
     reprPrec f _ := 
         let heapfmt := s!"Heap: {reprStr f.heap}\n"
-        let currentframe := f.frames[0]?
-        let stackframefmt := s!"Frame: \n {reprStr currentframe}\n"
+        let currentframe := 
+            match f.frames[0]? with 
+            |none => "[]"
+            |some frm => reprStr frm
+        let stackframefmt := s!"Frame: \n {currentframe}\n"
         Std.Format.text (List.foldl (· ++ ·) "" [heapfmt, stackframefmt])
                                                           
 
@@ -147,8 +153,7 @@ def extractBytecode (file : JPAMB) (methodname : String) : Except String (Array 
     | none  => throw ("No method with the name: " ++ methodname)
     | some x => pure x.code.bytecode
 
-instance : OfNat Ref n where 
-    ofNat := n
+
 
 /- instance : ToString Ref where  -/
 /-     toString := n.toString -/
@@ -157,7 +162,7 @@ def stepPush (s : State) (value: Option BytecodeValue) : Err State := do
     let frame <- s.getFrame 
     match value with 
     | none => 
-        let nullref :=  ⟨.ValRef 0⟩ 
+        let nullref := ⟨.ValRef .NullPtr⟩ 
         return s.updateStackFrame (frame.stackPush nullref).incrpc 
     | some v => 
         return s.updateStackFrame (frame.stackPush v).incrpc
@@ -336,28 +341,71 @@ def stepNewArray (s : State) (_type : BytecodeType) (_dim : Nat) : Err State := 
         |_ => throw "Count for NewArray must be an integer"
     | none => throw s!"No count defined for NewArray"
 
-instance : LT Ref := inferInstanceAs (LT Nat)
+instance {α : Type*} [LinearOrder α] : LinearOrder (Option α) where
+  le_refl := by grind [Option]
+  le_trans := by grind [Option]
+  le_antisymm := by grind [Option]
+  le_total := by grind [Option]
+  toDecidableLE
+    | some a, some b => decidable_of_bool (a ≤ b) (by simp)
+    | some _, none => decidable_of_bool false (by simp)
+    | none, _ => decidable_of_bool true (by simp)
+  min_def := by grind [Option]
+  max_def := by grind [Option]
+  lt_iff_le_not_ge := by grind [Option]
+  compare_eq_compareOfLessAndEq a b := by
+    rcases a with _ | a <;> rcases b with _ | b <;> simp_all [compare, compareOfLessAndEq]
+    grind [compare, compare_lt_iff_lt, compare_gt_iff_gt]
 
-instance : GetElem Heap Ref HeapElem (fun h i => i < h.heap.size) where
+theorem Ref.toNat_inj : Function.Injective Ref.toNat := by 
+   intro a b h
+   cases a
+   . cases b 
+     . rfl
+     simp [toNat] at h
+   cases b 
+   . simp [toNat] at h
+   simp [toNat] at h
+   subst_eqs
+   rfl
+    
+
+instance : LinearOrder Ref := LinearOrder.lift' Ref.toNat Ref.toNat_inj --inferInstanceAs (LT Nat)
+
+def Ref.elim {α : Type*} (r : Ref) (elem : α) (f : ℕ → α) := 
+    r.toNat.elim elem f
+
+instance : GetElem Heap Ref HeapElem (fun h i => i.elim false (· < h.heap.size)) where
       getElem h i h_bounds :=
-      h.heap[i.toNat]
+      match hi : i with 
+      |.NullPtr => False.elim (by grind [Ref.elim, Ref.toNat]) 
+      |.Ptr r => h.heap[r]'(by grind [Ref.elim, Ref.toNat])
 
-instance : GetElem? Heap Ref HeapElem (fun h i => i < h.heap.size) where
-  getElem? h i := h.heap[i.toNat]?
+instance : GetElem? Heap Ref HeapElem (fun h i => i.elim false (· < h.heap.size)) where
+  getElem? h i := 
+    match i with 
+    | .NullPtr => none
+    | .Ptr ir => h.heap[ir]?
 
 
 def updateHeapArray (s : State) (ref : Ref) (index : Int) (value : BytecodeValue) : Err State :=
-    match s.heap[ref]? with 
-    | none => throw "null pointer"
-    | some h => 
-        match h with 
-        |.Class _ => throw "Trying to access non-array heap value" 
-        |.Arr arr => 
-            match arr[index.toNat]? with 
-            | none => throw s!"out of bounds" --, index: {index}, size: {arr.size}" 
-            | some _ => 
-                let newarr := HeapElem.Arr <| arr.set! index.toNat value
-                pure {s with heap := s.heap.set ref newarr}
+    match ref with 
+    |.NullPtr => throw "null pointer"
+    |.Ptr _ =>
+      match s.heap[ref]? with 
+      | none => throw "out of bounds"
+      | some h => 
+          match h with 
+          |.Class _ => throw "Trying to access non-array heap value" 
+          |.Arr arr => 
+              match arr[index.toNat]? with 
+              | none => throw s!"out of bounds" --, index: {index}, size: {arr.size}" 
+              | some _ => 
+                  let newarr := HeapElem.Arr <| arr.set! index.toNat value
+                  let newheap := s.heap.set ref newarr
+                  match newheap with 
+                  |.error e => throw e
+                  |.ok nh => pure {s with heap := nh}
 
 def stepArrayStore (s : State) (_type : BytecodeType) : Err State := do
     let (val, index, arrayref, rest) <- (← s.getFrame).stackPop₃ 

@@ -23,7 +23,7 @@ def printLog (log: List (Except String JVMFrame)) : String :=
 
 def printResult (result : Except String String) : IO Unit :=
     match result with 
-    | .ok e
+    | .ok e 
     | .error e => IO.println e 
 
 
@@ -71,14 +71,16 @@ def runDynamic (method : Method) (logging : Bool) : IO Unit := do
 
 
 def runAbstractInterpreter 
-    {α : Type} {β : outParam (Type → Type)}  [Domain β] [Abstraction α β]
+    {α : Type} {β : outParam (Type → Type)}  [Domain β] [Abstraction α β] [Repr α]
     (jpamb : JPAMB) (method: Method) 
     (input : Option (List InputValue)) 
     (limit : Nat)
     : List String := 
         let init := initializeAbstractMethod jpamb method.name input
-        match (init : Err (List (Err (Stateful α β)))) with 
-        |.ok initial => interpretMany initial jpamb [] limit
+        match (init : Err (List (Stateful α β))) with 
+        |.ok initial => 
+            let wrap := initial.map (fun | x => pure [x])
+            interpretMany wrap jpamb [] limit
         |.error _ => ["Failed to initialize"] 
     
 
@@ -126,7 +128,7 @@ def parseArgs
         let (method,input) := parseInputs methodstr inputstr
         if method.isValid
         then 
-            --let res := evaluateMethod method input false 
+            --let res := evaluateMethod method input true 
             --printResult (← res)
             let res := abstractEvaluateMethod Sign method input 
             IO.println <| printSingles <| (← res)

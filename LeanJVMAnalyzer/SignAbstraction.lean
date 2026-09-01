@@ -15,7 +15,6 @@ abbrev SignSet := Finset Sign
 instance : LE SignSet where
     le x y := x ⊆ y
 
-
 instance : Singleton Sign SignSet where 
     singleton := fun e => insert e {}
 
@@ -195,6 +194,11 @@ instance : Arithmetic Sign Finset where
     ofList := List.toFinset 
     toList_ofList := by simp 
 
+instance : Repr SignSet where 
+    reprPrec s _ := 
+        let ls := s.sort
+        Std.Format.text <| (ls.foldl (fun a v => a ++ reprStr v) "[") ++ "]"
+
 
 def abstractSign (bc : BytecodeValue) : BytecodeValueA Sign :=
     match bc.value with 
@@ -211,8 +215,10 @@ def signSetContains (bc: BytecodeValue) (signset : SignSet) : Bool :=
     |.ValInt i 
     |.ValChar i 
     |.ValBool i 
-    |.ValShort i 
-    |.ValRef i => signFromInt i.toInt64.toInt ∈ signset
+    |.ValShort i => signFromInt i.toInt64.toInt ∈ signset
+    |.ValRef i => match i with 
+        |Ref.NullPtr => false 
+        |Ref.Ptr r => signFromInt r.toInt64.toInt ∈ signset
     |_ => True   
 
 
@@ -225,8 +231,8 @@ def signSetCheck (cond : Condition) (s1 s2 : BytecodeValueA Sign) : Err (Finset 
     match v1,v2 with
     | .val vi1, .val vi2 =>
         return (compareHelp cond vi1 vi2)
-    | .ref vi1, .ref vi2 => 
-        return (compareConcrete cond vi1 vi2)
+    | .ref _, .ref _ => 
+        return {false} --(compareConcrete cond vi1 vi2)
     | _, _ => throw "Trying to compare reference values and abstract values"
 
 theorem SignSet.le_refl (a : SignSet) : (a ∪ a) <= a := by
@@ -308,24 +314,29 @@ theorem galois_connection1 (a b : ℤ) : signFromInt (a + b) ∈  addSign (signF
 structure SignArray where 
     content : SignSet
     size : SignSet
+  deriving Repr
 
-instance : Repr Signarray where
-    reprPrec arr _ := 
-      --let content := arr.content.toList
-      Std.Format.text <| "hello"
+/- instance : Repr Signarray where -/
+/-     reprPrec arr _ :=  -/
+/-       let content : (List Sign) := repr arr -/
+/-       Std.Format.text <| "hello" -/
 
-def array_repr := repr SignArray
+/- def array_repr := repr SignArray -/
 
 def array_new : SignArray := SignArray.mk {} {.Zero} 
 
 def array_size (aarr : SignArray) : SignSet := aarr.size 
 
+/-- info: false -/
+#guard_msgs in
+#eval (Sign.Zero : Sign) ∈ ({Sign.Pos} : SignSet)
+
+def array_canIndexIntoArray (aarr : SignArray) (index : Sign) : Finset Bool := 
+    if index ∈ aarr.size then {true,false} else {false}
+
 def array_set (aarr : SignArray) (index : Sign) (value : Sign) : Option SignArray := 
     if index ∈ aarr.size then some (SignArray.mk (aarr.content ∪ {value}) {.Pos})
     else none
- 
-def array_canIndexIntoArray (aarr : SignArray) (index : Sign) : Finset Bool := 
-    if index ∈ aarr.size then {true,false} else {false}
 
 def array_get (aarr : SignArray) (index : Sign) : Option SignSet × Option (Err Sign) := 
     match index with 

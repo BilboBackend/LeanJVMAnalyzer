@@ -54,8 +54,19 @@ structure GenFrame (α β) [Domain β]  [Abstraction α β]  where
     code : Code 
     pc : Nat 
     status : Option String
- 
+
+structure GenFramePretty (α β) [Domain β]  [Abstraction α β]  where 
+    stack : List (BytecodeValueA α)
+    locals : Array (BytecodeValueA α)
+    pc : Nat 
+    status : Option String
+    deriving Repr
+
 namespace GenFrame 
+
+def pretty (α β) [Domain β]  [Abstraction α β] (gf : GenFrame α β) : GenFramePretty α β := 
+    GenFramePretty.mk gf.stack gf.locals gf.pc gf.status 
+
 
 
 variable  {α : Type} {β : outParam (Type → Type)} [Domain β]  [Abstraction α β] 
@@ -92,6 +103,10 @@ def bc (frame : GenFrame α β) : Except String Operation :=
 
 end GenFrame 
 
+instance (α β) [Domain β]  [Abstraction α β] [Repr α] : Repr (GenFrame α β) where
+    reprPrec gf _ := reprStr gf.pretty
+
+
 
 
 -- Here we let an entire array be represented by one abstract value (A gross over-approximation)
@@ -102,20 +117,34 @@ structure AbstractHeap (α β) [Domain β]  [Abstraction α β] where
     deriving Repr
 
 def AbstractHeap.push {α β}  [Domain β]  [Abstraction α β] (h: AbstractHeap α β ) (elem: AbstractHeapElem α β) : AbstractHeap α β × Ref :=
-    let newref : Ref := h.heap.size
+    let newref : Ref := .Ptr h.heap.size
     let h' := h.heap.push elem
     (⟨h'⟩ , newref) 
 
-def AbstractHeap.set {α β}  [Domain β]  [Abstraction α β] (h: AbstractHeap α β) (ref: Ref) (elem: AbstractHeapElem α β) : AbstractHeap α β :=
-    let h' := h.heap.set! ref elem
-    ⟨h'⟩ 
+def AbstractHeap.set {α β}  [Domain β]  [Abstraction α β] (h: AbstractHeap α β) (ref: Ref) (elem: AbstractHeapElem α β) : Err (AbstractHeap α β) :=
+    match ref with 
+    |.NullPtr => throw "null pointer"
+    |.Ptr r => 
+        let h' := h.heap.set! r elem
+        return ⟨h'⟩ 
 
 
 structure Stateful (α : Type) (β : outParam (Type → Type))  [Domain β]  [Abstraction α β] where 
     heap : AbstractHeap α β 
     frames : Array (GenFrame α β)
+    deriving Repr
+
+structure AbstractState (α : Type) (β : (Type → Type))  [Domain β]  [Abstraction α β] where
+    errors : List String 
+    states : List (Stateful α β)
+    deriving Repr
 
 abbrev ErrASt (α : Type) (β : outParam (Type → Type))  [Domain β]  [Abstraction α β] := Err (List (Stateful α β))
+
+def ErrASt.print {α : Type} {β : Type → Type} [Domain β]  [Abstraction α β] [Repr α] (ast: ErrASt α β) : String :=
+    match ast with
+    |.error e => e
+    |.ok ls => ls.foldl (fun a st => a ++ reprStr st) ""
 
 def printTerminalStates (α : Type) (β : outParam (Type → Type)) [Domain β]  [Abstraction α β]
   (terminal : List (Err (Stateful α β))) : List (Err String) :=
@@ -126,6 +155,12 @@ def printTerminalStates (α : Type) (β : outParam (Type → Type)) [Domain β] 
 namespace Stateful
 
 variable  {α : Type} {β : outParam (Type → Type)} [Domain β]  [Abstraction α β]
+
+def StoreState (abs : AbstractState α β ) (errAst : ErrASt α β) : AbstractState α β := 
+    match errAst with 
+    |  .ok v => {abs with states := abs.states ++ v }
+    |  .error e => {abs with errors := abs.errors ++ [e]}
+
 
 def getFrame (s : Stateful α β) : Err (GenFrame α β) :=
     match s.frames[0]? with 
@@ -165,29 +200,39 @@ def initializeAbstractInputValue
             return s.updateStackFrame (GenFrame.mk [] #[A.abstract v] code 0 none) --{f with stack := newref :: f.stack}
 
 
-def initializeStateful (input : Option (List InputValue)) (code : Code) : Err (Stateful α β) := 
+def initializeStateful (input : Option (List InputValue)) (code : Code) : Err (List (Stateful α β)) := 
     let initstate := Stateful.mk ⟨#[]⟩ #[]
     match input with 
     |some args => 
-        List.foldl (fun x y => initializeAbstractInputValue x y code) (pure initstate) args
+        let value := List.foldl (fun x y => initializeAbstractInputValue x y code) (pure initstate) args
+        match value with 
+        | .error e => throw e
+        | .ok v => return [v]
     |none => 
-        return initstate.updateStackFrame (GenFrame.mk [] #[] code 0 none)
+        pure [initstate.updateStackFrame (GenFrame.mk [] #[] code 0 none)]
 
 def initializeAbstractMethod (jpamb : JPAMB) (methodname : String) (inputs : Option (List InputValue))
-    : Except String (List (Err (Stateful α β))):=
+    : (Err (List (Stateful α β))):=
     match extractCode jpamb methodname with 
-    |.ok c => pure [initializeStateful inputs c]
+    |.ok c => initializeStateful inputs c
     |.error e => throw e
 
+-- Should abstract all but references
 def abstractStepPush (s : Stateful α β) (value: Option BytecodeValue) : ErrASt α β := do
     let frame <- s.getFrame 
     match value with 
     | none => 
-        let nullref := A.abstract ⟨ .ValRef 0 ⟩ 
+        let nullref := ⟨ .ValRef .NullPtr ⟩ 
         return [s.updateStackFrame (frame.stackPush nullref).incrpc]
     | some v => 
-        let av := A.abstract v
-        return [s.updateStackFrame (frame.stackPush av).incrpc]
+        let inner_value := v.value
+        match inner_value with 
+        |.ValRef r => 
+            let ref := ⟨ .ValRef r ⟩ 
+            return [s.updateStackFrame (frame.stackPush ref).incrpc]
+        | _ =>
+            let av := A.abstract v
+            return [s.updateStackFrame (frame.stackPush av).incrpc]
 
 def abstractStepGoto (s : Stateful α β) (target: Nat): ErrASt α β := do
     let frame <- s.getFrame 
@@ -250,7 +295,7 @@ def abstractStepReturn  (s : Stateful α β) (type : Option BytecodeType): ErrAS
         | some f => return [newstackframe.updateStackFrame (f.stackPush v |> .incrpc)]
     | (_,_) => throw s!"Cannot return on operation"
 
-inductive InnerValue (α : Type) where | val : α -> InnerValue α | ref : Nat -> InnerValue α 
+inductive InnerValue (α : Type) where | val : α -> InnerValue α | ref : Ref -> InnerValue α 
 
 def getValue (b : BytecodeValueA α) : Err (InnerValue α) := 
     match b.value with
@@ -268,14 +313,15 @@ def genericArithmetic (b1 b2 : BytecodeValueA α) (operant : String) : Err (List
     let v2 ← getValue b2
     let values ←
     match v1,v2 with 
-    | .ref vi1, .ref vi2 => 
-        match operant with 
-        | "add" => return [⟨.ValRef (vi1 + vi2)⟩]
-        | "sub" => return [⟨.ValRef (vi1 - vi2)⟩]
-        | "mul" => return [⟨.ValRef (vi1 * vi2)⟩]
-        | "rem" => return [⟨.ValRef (vi1 % vi2)⟩]
-        | "div" => if 0 == vi2 then throw "divide by zero" else return [⟨.ValRef (vi1 / vi2)⟩]
-        | o => throw s!"Undefined arithmetic operant {o}"
+    | .ref vi1, .ref vi2 =>
+        throw "pointer arithmetic!!!"
+        /- match operant with  -/
+        /- | "add" => return [⟨.ValRef (vi1 + vi2)⟩] -/
+        /- | "sub" => return [⟨.ValRef (vi1 - vi2)⟩] -/
+        /- | "mul" => return [⟨.ValRef (vi1 * vi2)⟩] -/
+        /- | "rem" => return [⟨.ValRef (vi1 % vi2)⟩] -/
+        /- | "div" => if 0 == vi2 then throw "divide by zero" else return [⟨.ValRef (vi1 / vi2)⟩] -/
+        /- | o => throw s!"Undefined arithmetic operant {o}" -/
     | .val vi1, .val vi2 =>
         match operant with 
         | "add" => return (Arithmetic.toList (vi1 +ₐ vi2)).map (fun v => ⟨.ValInt v⟩)
@@ -366,17 +412,22 @@ def abstractStepNewArray (s : Stateful α β) (type : BytecodeType) (dim : Nat) 
     | none => throw s!"No count defined for NewArray"
 
 
-instance : LT Ref := inferInstanceAs (LT Nat)
-
 instance : GetElem (AbstractHeap α β) Ref (AbstractHeapElem α β)
-    (fun h i => i < h.heap.size) where
+(fun h i => i.elim false (· < h.heap.size)) where
       getElem h i h_bounds :=
-      h.heap[i.toNat]
+      match hi : i with 
+      |.NullPtr => False.elim (by grind [Ref.elim, Ref.toNat]) 
+      |.Ptr r => h.heap[r]'(by grind [Ref.elim, Ref.toNat])
 
-instance : GetElem? (AbstractHeap α β) Ref (AbstractHeapElem α β) (fun h i => i < h.heap.size) where
-  getElem? h i := h.heap[i.toNat]?
 
-def abstractUpdateHeapArray (s : Stateful α β) (ref : Ref) (index : α) (value : α) : ErrASt α β :=
+instance : GetElem? (AbstractHeap α β) Ref (AbstractHeapElem α β) (fun h i => i.elim false (· < h.heap.size)) where
+  getElem? h i := 
+    match i with 
+    | .NullPtr => none
+    | .Ptr ir => h.heap[ir]?
+
+
+def abstractUpdateHeapArray (s : Stateful α β) (ref : Ref) (index : α) (value : α) : Err (List (ErrASt α β)) :=
     match s.heap[ref]? with 
     | none => throw "null pointer"
     | some h => 
@@ -387,9 +438,14 @@ def abstractUpdateHeapArray (s : Stateful α β) (ref : Ref) (index : α) (value
             match optSet with 
             | none => throw s!"out of bounds" --, index: {index}, size: {arr.size}" 
             | some newArr => 
-                return [{s with heap := s.heap.set ref (AbstractHeapElem.Arr newArr)}]
+                let new_heap := s.heap.set ref (AbstractHeapElem.Arr newArr)
+                match new_heap with 
+                |.error e => throw e
+                |.ok nh => 
+                    let new_state := [{s with heap := nh}]
+                    pure [throw s!"out of bounds", pure new_state ]
 
-def abstractStepArrayStore (s : Stateful α β) (type : BytecodeType) : ErrASt α β := do
+def abstractStepArrayStore (s : Stateful α β) (type : BytecodeType) : Err (List (ErrASt α β)) := do
     let (valo, indexo, arrayrefo, rest) <- (← s.getFrame).stackPop₃ 
     let arrayref ← getValue arrayrefo
     let index ← getValue indexo
@@ -420,7 +476,7 @@ def abstractStepArrayLoadHelp (s : Stateful α β) (rest : GenFrame α β) (aarr
         let values := (A.toList arr).map (fun v => ⟨.ValInt v⟩)
         return (values.map (fun v => s.updateStackFrame (rest.stackPush v).incrpc)) 
                  
-def abstractStepArrayLoad (s : Stateful α β) (type : BytecodeType) : ErrASt α β := do
+def abstractStepArrayLoad (s : Stateful α β) (type : BytecodeType) : Err (List (ErrASt α β)) := do
     let frame <- s.getFrame 
     let (index,arrayref,rest) <- frame.stackPop₂ 
     match arrayref.value, index.value with
@@ -430,11 +486,10 @@ def abstractStepArrayLoad (s : Stateful α β) (type : BytecodeType) : ErrASt α
         | some (AbstractHeapElem.Arr arr) => 
             let possibilities := A.array_get arr i
             match possibilities with 
-            |(some v, none) => abstractStepArrayLoadHelp s rest v 
+            |(some v, none) => return [abstractStepArrayLoadHelp s rest v]
             |(some v, some e) =>
-                  abstractStepArrayLoadHelp s rest v  
-                  --abstractStepArrayLoadHelp s rest none
-            |(_ , _) => throw "out of bounds"  
+            return [abstractStepArrayLoadHelp s rest v, throw "out of bounds"] --[abstractStepArrayLoadHelp s rest none]
+            |(_ , _) => return [throw "out of bounds"]
         | some _ => throw s!"Not an array at reference"
     | _ , _ => throw "Concretized values are not valid"
 
@@ -450,8 +505,7 @@ def abstractStepIncr (s : Stateful α β) (index : Nat) (amount : Int): ErrASt �
             return values.map (fun v => s.updateStackFrame {frame with locals := frame.locals.set! index v}.incrpc) 
 
 
-
--- The below is the correct definition. Some issue
+--The below is the correct definition. Some issue
 --def abstractStepCast [Abstraction α] (s : Stateful α) (froM : KindEnum) (to : KindEnum): ErrASt α := do
 def abstractStepCast (s : Stateful α β) (froM : KindEnum) : ErrASt α β := do
     return [s.updateStackFrame (← s.getFrame).incrpc]
@@ -466,53 +520,57 @@ def abstractStepNegate(s : Stateful α β) (type: BytecodeType): ErrASt α β:= 
         return values.map (fun v => s.updateStackFrame (xs.stackPush v).incrpc) 
 
 
-def abstractStep (s : Stateful α β) (code : JPAMB) : ErrASt α β := do
+def abstractStep (s : Stateful α β) (code : JPAMB) : Err (List (ErrASt α β)) := do
     if s.frames.isEmpty 
     then throw "ok"
     else 
     let frame <- s.getFrame 
     match frame.status with 
-    |some _ => pure [s] 
+    |some _ => pure [pure [s]]
     |none => 
         let bc <- frame.bc
+        dbg_trace reprStr bc
         match bc with 
-        | .Push _ value => abstractStepPush s value
-        | .Ifz _ cond target => abstractStepIfz s cond target
-        | .If _ cond target => abstractStepIf s cond target
-        | .Goto _ target => abstractStepGoto s target
-        | .Get _ static field => abstractStepGet s static field
-        | .Return _ type => abstractStepReturn s type
-        | .Binary _ type operant => abstractStepBinary s type operant
-        | .Load _ index type => abstractStepLoad s index type
-        | .Store _ index type => abstractStepStore s index type
-        | .Dup _ words => abstractStepDup s words
-        | .New _ clAss => abstractStepNew s clAss
-        | .Invoke _ access method => abstractStepInvoke s code access method
-        | .NewArray _ type dim => abstractStepNewArray s type dim
+        | .Push _ value => return [abstractStepPush s value]
+        | .Ifz _ cond target => return [abstractStepIfz s cond target]
+        | .If _ cond target => return [abstractStepIf s cond target]
+        | .Goto _ target => return [abstractStepGoto s target]
+        | .Get _ static field => return [abstractStepGet s static field]
+        | .Return _ type => return [abstractStepReturn s type]
+        | .Binary _ type operant => return [abstractStepBinary s type operant]
+        | .Load _ index type => return [abstractStepLoad s index type]
+        | .Store _ index type => return [abstractStepStore s index type]
+        | .Dup _ words => return [abstractStepDup s words]
+        | .New _ clAss => return [abstractStepNew s clAss]
+        | .Invoke _ access method => return [abstractStepInvoke s code access method]
+        | .NewArray _ type dim => return [abstractStepNewArray s type dim]
         | .ArrayStore _ type => abstractStepArrayStore s type
-        | .ArrayLength _ => abstractStepArrayLength s 
+        | .ArrayLength _ => return [abstractStepArrayLength s]
         | .ArrayLoad _ type => abstractStepArrayLoad s type
-        | .Incr _ index amount => abstractStepIncr s index amount
-        | .Cast _ froM _ => abstractStepCast s froM
-        | .Negate _ type => abstractStepNegate s type
+        | .Incr _ index amount => return [abstractStepIncr s index amount]
+        | .Cast _ froM _ => return [abstractStepCast s froM]
+        | .Negate _ type => return [abstractStepNegate s type]
         | stp => throw ("Undefined step: " ++ (reprStr stp))
     
 
 -- Limit is set in the counter
 def interpretMany 
-  {α : Type}  [Abstraction α β] 
-  (stf : List (Err (Stateful α β))) 
+  {α : Type}  [Abstraction α β] [Repr α]
+  (stf : List (ErrASt α β))
   (code : JPAMB) (intermediate_res : List String) 
   (counter : Nat) : List String := 
-    let needswork := stf.filterMap (fun | .ok x => some x | .error _ => none )
-    let finished := intermediate_res ++ (stf.filterMap (fun | .ok x => none | .error e => some e))
-    let states := needswork.map (fun x => abstractStep x code)
-    if (counter > 0) 
+    let needswork := (stf.filterMap (fun | .ok x => some x | .error _ => none )).flatten
+    --let finished := intermediate_res ++ (stf.filterMap (fun | .ok x => none | .error e => some e))
+    if (counter > 0 ∧ ¬needswork.isEmpty) 
     then 
-        let flattened := states.flatMap (fun | Except.ok s => s.map pure | Except.error err  => [Except.error err])
-        interpretMany flattened code finished (counter - 1) 
+        dbg_trace (needswork.map (fun v => reprStr v))
+        let states := (needswork.flatMap (fun x => return abstractStep x code)) --
+        let finished_outer := intermediate_res ++ (states.filterMap (fun | .ok x => none | .error e => some e))
+        let states_inner := states.filterMap (fun | .ok x => some x | .error _ => none ) 
+        let finished := finished_outer ++ (states_inner.flatten.filterMap (fun | .ok x => none | .error e => e ))
+        interpretMany states_inner.flatten code finished (counter - 1) 
     else
-        let final := finished ++ (stf.map (fun | .ok x => "*" | .error e => e))
+        let final := intermediate_res ++ (stf.map (fun | .ok x => "*" | .error e => e))
         final.eraseDups 
             
 
