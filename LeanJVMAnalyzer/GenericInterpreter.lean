@@ -238,15 +238,15 @@ def abstractStepGoto (s : Stateful α β) (target: Nat): ErrASt α β := do
     let frame <- s.getFrame 
     return [s.updateStackFrame { frame with  pc := target }]
 
-def boolSetToStates [Abstraction α β] (bs : Finset Bool) (s1 s2: Stateful α β) : List (Stateful α β) :=
+def boolSetToStates [Abstraction α β] (bs : Finset Bool) (nxt tgt: Stateful α β) : List (Stateful α β) :=
     if h1 : true ∈ bs then
       if h2 : false ∈ bs then
-        [s1, s2]
+        [nxt,tgt]
       else
-        [s1]
+        [tgt]
     else
       if h2 : false ∈ bs then
-        [s2]
+        [nxt]
       else
         []
 
@@ -257,7 +257,10 @@ def abstractStepIfz (s : Stateful α β) (cond : Condition) (target : Nat) : Err
     let sat := A.check cond v1 (A.abstract ⟨ .ValInt 0 ⟩ )
     match sat with 
     |.error e => throw e
-    |.ok sat => return boolSetToStates sat (s.updateStackFrame (rest.setpc target)) (s.updateStackFrame rest.incrpc)
+    |.ok sat => 
+        let nxt := s.updateStackFrame rest.incrpc
+        let tgt := s.updateStackFrame (rest.setpc target)
+        return boolSetToStates sat nxt tgt
    
 
 def abstractStepIf (s : Stateful α β) (cond : Condition) (target : Nat) : ErrASt α β := do
@@ -266,7 +269,10 @@ def abstractStepIf (s : Stateful α β) (cond : Condition) (target : Nat) : ErrA
     let sat := A.check cond v1 v2
     match sat with 
     |.error e => throw e
-    |.ok sat => return boolSetToStates sat (s.updateStackFrame (rest.setpc target)) (s.updateStackFrame rest.incrpc)
+    |.ok sat => 
+        let nxt := s.updateStackFrame rest.incrpc
+        let tgt := s.updateStackFrame (rest.setpc target)
+        return boolSetToStates sat nxt tgt
 
 
 def abstractStepGet (s : Stateful α β) (static : Bool) (field : BytecodeField) : ErrASt α β := do
@@ -486,9 +492,9 @@ def abstractStepArrayLoad (s : Stateful α β) (type : BytecodeType) : Err (List
         | some (AbstractHeapElem.Arr arr) => 
             let possibilities := A.array_get arr i
             match possibilities with 
-            |(some v, none) => return [abstractStepArrayLoadHelp s rest v]
+            |(some v, none) 
             |(some v, some e) =>
-            return [abstractStepArrayLoadHelp s rest v, throw "out of bounds"] --[abstractStepArrayLoadHelp s rest none]
+                return [abstractStepArrayLoadHelp s rest v, throw "out of bounds"] --[abstractStepArrayLoadHelp s rest none]
             |(_ , _) => return [throw "out of bounds"]
         | some _ => throw s!"Not an array at reference"
     | _ , _ => throw "Concretized values are not valid"
@@ -563,7 +569,7 @@ def interpretMany
     --let finished := intermediate_res ++ (stf.filterMap (fun | .ok x => none | .error e => some e))
     if (counter > 0 ∧ ¬needswork.isEmpty) 
     then 
-        dbg_trace (needswork.map (fun v => reprStr v))
+        --dbg_trace (needswork.map (fun v => reprStr v))
         let states := (needswork.flatMap (fun x => return abstractStep x code)) --
         let finished_outer := intermediate_res ++ (states.filterMap (fun | .ok x => none | .error e => some e))
         let states_inner := states.filterMap (fun | .ok x => some x | .error _ => none ) 

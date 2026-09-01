@@ -137,10 +137,30 @@ def leSign (s1 : Sign) (s2: Sign) : Finset Bool :=
     |(.Neg,.Pos) => {true}
     |(_,_) => {false} 
 
+def eqSign (s1 : Sign) (s2: Sign) : Finset Bool :=
+    match (s1, s2) with 
+    |(.Neg,.Neg) 
+    |(.Pos,.Pos) => {true, false}
+    |(.Zero,.Zero) =>  {true}
+    |(.Zero,.Pos) 
+    |(.Neg,.Zero)
+    |(.Neg,.Pos) 
+    |(_,_) => {false}
+
+def neqSign (s1 : Sign) (s2: Sign) : Finset Bool :=
+    match (s1, s2) with 
+    |(.Neg,.Neg) 
+    |(.Pos,.Pos) => {true, false}
+    |(.Zero,.Zero) =>  {false}
+    |(.Zero,.Pos) 
+    |(.Neg,.Zero)
+    |(.Neg,.Pos) 
+    |(_,_) => {true}
+
 def compareHelp (cond: Condition)(s1: Sign) (s2: Sign) : Finset Bool :=
     match cond with 
-    | .Ne => {(s1 != s2)}
-    | .Eq => {(s1 == s2)}
+    | .Ne => neqSign s1 s2 
+    | .Eq => eqSign s1 s2
     | .Lt => ltSign s1 s2
     | .Gt => ltSign s2 s1 
     | .Le => leSign s1 s2 

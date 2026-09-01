@@ -71,7 +71,7 @@ def runDynamic (method : Method) (logging : Bool) : IO Unit := do
 
 
 def runAbstractInterpreter 
-    {α : Type} {β : outParam (Type → Type)}  [Domain β] [Abstraction α β] [Repr α]
+    {α : Type} {β : outParam (Type → Type)}  [Domain β] [Abstraction α β] [Repr α ]
     (jpamb : JPAMB) (method: Method) 
     (input : Option (List InputValue)) 
     (limit : Nat)
@@ -92,7 +92,7 @@ def abstractEvaluateMethod
         let file ← method.loadFile
         let json ← IO.ofExcept <| Json.parse file
         let jpamb : JPAMB ← IO.ofExcept <| FromJson.fromJson? json 
-        return (runAbstractInterpreter (α := Sign) (β := Finset) jpamb method input 1000)
+        return (runAbstractInterpreter (α := Sign) (β := Finset) jpamb method input 800)
 
 def printSingles (res : List String) : String :=
     match res with 
