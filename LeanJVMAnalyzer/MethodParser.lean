@@ -16,16 +16,27 @@ namespace Method
 def loadFile (method : Method) : IO String := do
     let filepath ← 
         IO.FS.readFile <| .toString 
-        <| System.mkFilePath ("decompiled" :: method.classpath) 
+        <| System.mkFilePath ("target" :: "decompiled" :: method.classpath) 
         |>.addExtension "json"
     return filepath
+
+def getPath (method : Method) : System.FilePath := 
+    System.mkFilePath ("decompiled" :: method.classpath) |>.addExtension "json" 
+    
+def loadFileStream (method : Method) : IO (Option IO.FS.Stream) := do
+    let fileexists ← method.getPath.pathExists 
+    if fileexists
+    then 
+        let stderr <- IO.getStderr 
+        stderr.putStrLn s!"File {method.getPath} not found!"
+        return none
+    else 
+        let handle <- IO.FS.Handle.mk method.getPath IO.FS.Mode.read 
+        return some (IO.FS.Stream.ofHandle handle)
 
 def isValid (desc : Method) : Bool := 
     let ls := List.map (fun x => x != "") ([desc.name] ++ [desc.outtypes] ++ desc.classpath)
     (List.foldl (· && ·) True ls) && (desc.classpath.length > 0) 
-
-def getPath (method : Method) : System.FilePath :=
-    System.mkFilePath method.classpath 
 
 end Method
 
@@ -48,7 +59,6 @@ def parseMethod (s : String) : Method:=
     let out := parseOutType methoddata
     Method.mk classname name args out 
 
-
 def matchInputType (i : String) : KindEnum :=
     match i with 
     |"I" =>  .KindInt
@@ -58,10 +68,6 @@ def matchInputType (i : String) : KindEnum :=
     |"[Z" => .KindBoolArr 
     |"[C" => .KindCharArr
     |_ =>  .KindInt
-
-
-def createBytecodeVals (types : List KindEnum) (inputs : List ValueEnum) : List BytecodeValue :=
-    List.zipWith (fun x y => BytecodeValue.mk x y) types inputs 
 
 def parseInputTypes (input: List String) : List KindEnum :=
     match input with 
@@ -83,11 +89,11 @@ def parseTypes (s : String) : List KindEnum :=
 -- Create an applicative functor to validate input
 def matchInputValue (kindval : KindEnum × String): BytecodeValue := 
     match kindval with 
-    |(.KindInt, val) => BytecodeValue.mk .KindInt (.ValInt (val.toInt!))
-    |(.KindChar, char) => BytecodeValue.mk .KindInt (.ValChar (char.front.toNat))
-    |(.KindBool, "false") => BytecodeValue.mk .KindInt (.ValBool 0)
-    |(.KindBool, "true") => BytecodeValue.mk .KindInt (.ValBool 1)
-    |(_,val) =>  BytecodeValue.mk .KindInt (.ValInt (val.toNat!))
+    |(.KindInt, val) => ⟨.ValInt (val.toInt!)⟩ 
+    |(.KindChar, char) => ⟨.ValChar char.front.toNat⟩ 
+    |(.KindBool, "false") => ⟨ .ValBool 0⟩ 
+    |(.KindBool, "true") => ⟨.ValBool 1⟩ 
+    |(_,val) => ⟨.ValInt (val.toNat!)⟩ 
 
 
 
@@ -97,9 +103,8 @@ def matchInputValue (kindval : KindEnum × String): BytecodeValue :=
 #guard_msgs in
 #eval (parseMethod "jpamb.Cases.Simple.assertFalse()V").isValid
 
-
 /--
-info: some [InputValue.InVal ValueEnum.ValInt 3, InputValue.InVal ValueEnum.ValInt 2, InputValue.InVal ValueEnum.ValInt 12]
+info: some [InputValue.InVal ValueEnumA.ValInt 3, InputValue.InVal ValueEnumA.ValInt 2, InputValue.InVal ValueEnumA.ValInt 12]
 -/
 #guard_msgs in
 #eval parseInput "(12,2,3)"

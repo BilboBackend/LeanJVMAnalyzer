@@ -1,0 +1,2212 @@
+{
+  "access": [
+    "public",
+    "final",
+    "super"
+  ],
+  "annotations": [],
+  "bootstrapmethods": [
+    {
+      "index": 0,
+      "method": {
+        "args": [
+          {
+            "type": "methodtype",
+            "value": {
+              "args": [
+                {
+                  "kind": "class",
+                  "name": "java/lang/Object"
+                }
+              ],
+              "returns": {
+                "kind": "class",
+                "name": "java/lang/Object"
+              }
+            }
+          },
+          {
+            "type": "methodhandle",
+            "value": {
+              "handletype": "method",
+              "kind": "static",
+              "method": {
+                "args": [
+                  {
+                    "kind": "class",
+                    "name": "java/lang/Object"
+                  }
+                ],
+                "is_interface": false,
+                "name": "toInputString",
+                "ref": {
+                  "kind": "class",
+                  "name": "jpamb/utils/CaseContent"
+                },
+                "returns": {
+                  "kind": "class",
+                  "name": "java/lang/String"
+                }
+              }
+            }
+          },
+          {
+            "type": "methodtype",
+            "value": {
+              "args": [
+                {
+                  "kind": "class",
+                  "name": "java/lang/Object"
+                }
+              ],
+              "returns": {
+                "kind": "class",
+                "name": "java/lang/String"
+              }
+            }
+          }
+        ],
+        "handle": {
+          "handletype": "method",
+          "kind": "static",
+          "method": {
+            "args": [
+              {
+                "kind": "class",
+                "name": "java/lang/invoke/MethodHandles$Lookup"
+              },
+              {
+                "kind": "class",
+                "name": "java/lang/String"
+              },
+              {
+                "kind": "class",
+                "name": "java/lang/invoke/MethodType"
+              },
+              {
+                "kind": "class",
+                "name": "java/lang/invoke/MethodType"
+              },
+              {
+                "kind": "class",
+                "name": "java/lang/invoke/MethodHandle"
+              },
+              {
+                "kind": "class",
+                "name": "java/lang/invoke/MethodType"
+              }
+            ],
+            "is_interface": false,
+            "name": "metafactory",
+            "ref": {
+              "kind": "class",
+              "name": "java/lang/invoke/LambdaMetafactory"
+            },
+            "returns": {
+              "kind": "class",
+              "name": "java/lang/invoke/CallSite"
+            }
+          }
+        }
+      }
+    },
+    {
+      "index": 1,
+      "method": {
+        "args": [
+          {
+            "type": "string",
+            "value": "(\u0001) -> \u0001"
+          }
+        ],
+        "handle": {
+          "handletype": "method",
+          "kind": "static",
+          "method": {
+            "args": [
+              {
+                "kind": "class",
+                "name": "java/lang/invoke/MethodHandles$Lookup"
+              },
+              {
+                "kind": "class",
+                "name": "java/lang/String"
+              },
+              {
+                "kind": "class",
+                "name": "java/lang/invoke/MethodType"
+              },
+              {
+                "kind": "class",
+                "name": "java/lang/String"
+              },
+              {
+                "kind": "array",
+                "type": {
+                  "kind": "class",
+                  "name": "java/lang/Object"
+                }
+              }
+            ],
+            "is_interface": false,
+            "name": "makeConcatWithConstants",
+            "ref": {
+              "kind": "class",
+              "name": "java/lang/invoke/StringConcatFactory"
+            },
+            "returns": {
+              "kind": "class",
+              "name": "java/lang/invoke/CallSite"
+            }
+          }
+        }
+      }
+    },
+    {
+      "index": 2,
+      "method": {
+        "args": [
+          {
+            "type": "string",
+            "value": "[I:\u0001"
+          }
+        ],
+        "handle": {
+          "handletype": "method",
+          "kind": "static",
+          "method": {
+            "args": [
+              {
+                "kind": "class",
+                "name": "java/lang/invoke/MethodHandles$Lookup"
+              },
+              {
+                "kind": "class",
+                "name": "java/lang/String"
+              },
+              {
+                "kind": "class",
+                "name": "java/lang/invoke/MethodType"
+              },
+              {
+                "kind": "class",
+                "name": "java/lang/String"
+              },
+              {
+                "kind": "array",
+                "type": {
+                  "kind": "class",
+                  "name": "java/lang/Object"
+                }
+              }
+            ],
+            "is_interface": false,
+            "name": "makeConcatWithConstants",
+            "ref": {
+              "kind": "class",
+              "name": "java/lang/invoke/StringConcatFactory"
+            },
+            "returns": {
+              "kind": "class",
+              "name": "java/lang/invoke/CallSite"
+            }
+          }
+        }
+      }
+    },
+    {
+      "index": 3,
+      "method": {
+        "args": [
+          {
+            "type": "string",
+            "value": "'\u0001'"
+          }
+        ],
+        "handle": {
+          "handletype": "method",
+          "kind": "static",
+          "method": {
+            "args": [
+              {
+                "kind": "class",
+                "name": "java/lang/invoke/MethodHandles$Lookup"
+              },
+              {
+                "kind": "class",
+                "name": "java/lang/String"
+              },
+              {
+                "kind": "class",
+                "name": "java/lang/invoke/MethodType"
+              },
+              {
+                "kind": "class",
+                "name": "java/lang/String"
+              },
+              {
+                "kind": "array",
+                "type": {
+                  "kind": "class",
+                  "name": "java/lang/Object"
+                }
+              }
+            ],
+            "is_interface": false,
+            "name": "makeConcatWithConstants",
+            "ref": {
+              "kind": "class",
+              "name": "java/lang/invoke/StringConcatFactory"
+            },
+            "returns": {
+              "kind": "class",
+              "name": "java/lang/invoke/CallSite"
+            }
+          }
+        }
+      }
+    },
+    {
+      "index": 4,
+      "method": {
+        "args": [
+          {
+            "type": "string",
+            "value": "[C:\u0001]"
+          }
+        ],
+        "handle": {
+          "handletype": "method",
+          "kind": "static",
+          "method": {
+            "args": [
+              {
+                "kind": "class",
+                "name": "java/lang/invoke/MethodHandles$Lookup"
+              },
+              {
+                "kind": "class",
+                "name": "java/lang/String"
+              },
+              {
+                "kind": "class",
+                "name": "java/lang/invoke/MethodType"
+              },
+              {
+                "kind": "class",
+                "name": "java/lang/String"
+              },
+              {
+                "kind": "array",
+                "type": {
+                  "kind": "class",
+                  "name": "java/lang/Object"
+                }
+              }
+            ],
+            "is_interface": false,
+            "name": "makeConcatWithConstants",
+            "ref": {
+              "kind": "class",
+              "name": "java/lang/invoke/StringConcatFactory"
+            },
+            "returns": {
+              "kind": "class",
+              "name": "java/lang/invoke/CallSite"
+            }
+          }
+        }
+      }
+    },
+    {
+      "index": 5,
+      "method": {
+        "args": [
+          {
+            "type": "string",
+            "value": "Invalid case: \u0001"
+          }
+        ],
+        "handle": {
+          "handletype": "method",
+          "kind": "static",
+          "method": {
+            "args": [
+              {
+                "kind": "class",
+                "name": "java/lang/invoke/MethodHandles$Lookup"
+              },
+              {
+                "kind": "class",
+                "name": "java/lang/String"
+              },
+              {
+                "kind": "class",
+                "name": "java/lang/invoke/MethodType"
+              },
+              {
+                "kind": "class",
+                "name": "java/lang/String"
+              },
+              {
+                "kind": "array",
+                "type": {
+                  "kind": "class",
+                  "name": "java/lang/Object"
+                }
+              }
+            ],
+            "is_interface": false,
+            "name": "makeConcatWithConstants",
+            "ref": {
+              "kind": "class",
+              "name": "java/lang/invoke/StringConcatFactory"
+            },
+            "returns": {
+              "kind": "class",
+              "name": "java/lang/invoke/CallSite"
+            }
+          }
+        }
+      }
+    },
+    {
+      "index": 6,
+      "method": {
+        "args": [
+          {
+            "type": "class",
+            "value": {
+              "kind": "class",
+              "name": "jpamb/utils/CaseContent"
+            }
+          },
+          {
+            "type": "string",
+            "value": "params;result"
+          },
+          {
+            "type": "methodhandle",
+            "value": {
+              "handletype": "field",
+              "kind": "getfield",
+              "ref": {
+                "class": "jpamb/utils/CaseContent",
+                "name": "params",
+                "type": {
+                  "kind": "array",
+                  "type": {
+                    "kind": "class",
+                    "name": "java/lang/Object"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "type": "methodhandle",
+            "value": {
+              "handletype": "field",
+              "kind": "getfield",
+              "ref": {
+                "class": "jpamb/utils/CaseContent",
+                "name": "result",
+                "type": {
+                  "kind": "class",
+                  "name": "jpamb/utils/CaseContent$ResultType"
+                }
+              }
+            }
+          }
+        ],
+        "handle": {
+          "handletype": "method",
+          "kind": "static",
+          "method": {
+            "args": [
+              {
+                "kind": "class",
+                "name": "java/lang/invoke/MethodHandles$Lookup"
+              },
+              {
+                "kind": "class",
+                "name": "java/lang/String"
+              },
+              {
+                "kind": "class",
+                "name": "java/lang/invoke/TypeDescriptor"
+              },
+              {
+                "kind": "class",
+                "name": "java/lang/Class"
+              },
+              {
+                "kind": "class",
+                "name": "java/lang/String"
+              },
+              {
+                "kind": "array",
+                "type": {
+                  "kind": "class",
+                  "name": "java/lang/invoke/MethodHandle"
+                }
+              }
+            ],
+            "is_interface": false,
+            "name": "bootstrap",
+            "ref": {
+              "kind": "class",
+              "name": "java/lang/runtime/ObjectMethods"
+            },
+            "returns": {
+              "kind": "class",
+              "name": "java/lang/Object"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "enclosingmethod": null,
+  "fields": [
+    {
+      "access": [
+        "private",
+        "final"
+      ],
+      "annotations": [],
+      "name": "params",
+      "type": {
+        "annotations": [],
+        "kind": "array",
+        "type": {
+          "annotations": [],
+          "args": [],
+          "inner": null,
+          "kind": "class",
+          "name": "java/lang/Object"
+        }
+      },
+      "value": null
+    },
+    {
+      "access": [
+        "private",
+        "final"
+      ],
+      "annotations": [],
+      "name": "result",
+      "type": {
+        "annotations": [],
+        "args": [],
+        "inner": {
+          "annotations": [],
+          "args": [],
+          "inner": null,
+          "name": "ResultType"
+        },
+        "kind": "class",
+        "name": "jpamb/utils/CaseContent"
+      },
+      "value": null
+    }
+  ],
+  "innerclasses": [
+    {
+      "access": [
+        "public",
+        "static",
+        "final",
+        "enum"
+      ],
+      "class": "jpamb/utils/CaseContent$ResultType",
+      "name": "ResultType",
+      "outer": "jpamb/utils/CaseContent"
+    },
+    {
+      "access": [
+        "public",
+        "static",
+        "final"
+      ],
+      "class": "java/lang/invoke/MethodHandles$Lookup",
+      "name": "Lookup",
+      "outer": "java/lang/invoke/MethodHandles"
+    }
+  ],
+  "interfaces": [],
+  "methods": [
+    {
+      "access": [
+        "public"
+      ],
+      "annotations": [],
+      "code": {
+        "annotations": [],
+        "bytecode": [
+          {
+            "index": 0,
+            "offset": 0,
+            "opr": "load",
+            "type": "ref"
+          },
+          {
+            "access": "special",
+            "method": {
+              "args": [],
+              "is_interface": false,
+              "name": "<init>",
+              "ref": {
+                "kind": "class",
+                "name": "java/lang/Record"
+              },
+              "returns": null
+            },
+            "offset": 1,
+            "opr": "invoke"
+          },
+          {
+            "index": 0,
+            "offset": 4,
+            "opr": "load",
+            "type": "ref"
+          },
+          {
+            "index": 1,
+            "offset": 5,
+            "opr": "load",
+            "type": "ref"
+          },
+          {
+            "field": {
+              "class": "jpamb/utils/CaseContent",
+              "name": "params",
+              "type": {
+                "kind": "array",
+                "type": {
+                  "kind": "class",
+                  "name": "java/lang/Object"
+                }
+              }
+            },
+            "offset": 6,
+            "opr": "put",
+            "static": false
+          },
+          {
+            "index": 0,
+            "offset": 9,
+            "opr": "load",
+            "type": "ref"
+          },
+          {
+            "index": 2,
+            "offset": 10,
+            "opr": "load",
+            "type": "ref"
+          },
+          {
+            "field": {
+              "class": "jpamb/utils/CaseContent",
+              "name": "result",
+              "type": {
+                "kind": "class",
+                "name": "jpamb/utils/CaseContent$ResultType"
+              }
+            },
+            "offset": 11,
+            "opr": "put",
+            "static": false
+          },
+          {
+            "offset": 14,
+            "opr": "return",
+            "type": null
+          }
+        ],
+        "exceptions": [],
+        "lines": [
+          {
+            "line": 10,
+            "offset": 0
+          }
+        ],
+        "max_locals": 3,
+        "max_stack": 2,
+        "stack_map": null
+      },
+      "default": null,
+      "exceptions": [],
+      "name": "<init>",
+      "params": [
+        {
+          "access": [],
+          "annotations": [],
+          "name": "params",
+          "type": {
+            "annotations": [],
+            "kind": "array",
+            "type": {
+              "annotations": [],
+              "args": [],
+              "inner": null,
+              "kind": "class",
+              "name": "java/lang/Object"
+            }
+          },
+          "visible": true
+        },
+        {
+          "access": [],
+          "annotations": [],
+          "name": "result",
+          "type": {
+            "annotations": [],
+            "args": [],
+            "inner": {
+              "annotations": [],
+              "args": [],
+              "inner": null,
+              "name": "ResultType"
+            },
+            "kind": "class",
+            "name": "jpamb/utils/CaseContent"
+          },
+          "visible": true
+        }
+      ],
+      "returns": {
+        "annotations": [],
+        "type": null
+      },
+      "typeparams": []
+    },
+    {
+      "access": [
+        "public"
+      ],
+      "annotations": [],
+      "code": {
+        "annotations": [],
+        "bytecode": [
+          {
+            "index": 0,
+            "offset": 0,
+            "opr": "load",
+            "type": "ref"
+          },
+          {
+            "field": {
+              "class": "jpamb/utils/CaseContent",
+              "name": "params",
+              "type": {
+                "kind": "array",
+                "type": {
+                  "kind": "class",
+                  "name": "java/lang/Object"
+                }
+              }
+            },
+            "offset": 1,
+            "opr": "get",
+            "static": false
+          },
+          {
+            "access": "static",
+            "method": {
+              "args": [
+                {
+                  "kind": "array",
+                  "type": {
+                    "kind": "class",
+                    "name": "java/lang/Object"
+                  }
+                }
+              ],
+              "is_interface": false,
+              "name": "asList",
+              "ref": {
+                "kind": "class",
+                "name": "java/util/Arrays"
+              },
+              "returns": {
+                "kind": "class",
+                "name": "java/util/List"
+              }
+            },
+            "offset": 4,
+            "opr": "invoke"
+          },
+          {
+            "access": "interface",
+            "method": {
+              "args": [],
+              "name": "stream",
+              "ref": {
+                "kind": "class",
+                "name": "java/util/List"
+              },
+              "returns": {
+                "kind": "class",
+                "name": "java/util/stream/Stream"
+              }
+            },
+            "offset": 7,
+            "opr": "invoke",
+            "stack_size": 1
+          },
+          {
+            "access": "dynamic",
+            "index": 0,
+            "method": {
+              "args": [],
+              "name": "apply",
+              "returns": {
+                "kind": "class",
+                "name": "java/util/function/Function"
+              }
+            },
+            "offset": 12,
+            "opr": "invoke"
+          },
+          {
+            "access": "interface",
+            "method": {
+              "args": [
+                {
+                  "kind": "class",
+                  "name": "java/util/function/Function"
+                }
+              ],
+              "name": "map",
+              "ref": {
+                "kind": "class",
+                "name": "java/util/stream/Stream"
+              },
+              "returns": {
+                "kind": "class",
+                "name": "java/util/stream/Stream"
+              }
+            },
+            "offset": 17,
+            "opr": "invoke",
+            "stack_size": 2
+          },
+          {
+            "access": "interface",
+            "method": {
+              "args": [],
+              "name": "toList",
+              "ref": {
+                "kind": "class",
+                "name": "java/util/stream/Stream"
+              },
+              "returns": {
+                "kind": "class",
+                "name": "java/util/List"
+              }
+            },
+            "offset": 22,
+            "opr": "invoke",
+            "stack_size": 1
+          },
+          {
+            "index": 1,
+            "offset": 27,
+            "opr": "store",
+            "type": "ref"
+          },
+          {
+            "offset": 28,
+            "opr": "push",
+            "value": {
+              "type": "string",
+              "value": ", "
+            }
+          },
+          {
+            "index": 1,
+            "offset": 30,
+            "opr": "load",
+            "type": "ref"
+          },
+          {
+            "access": "static",
+            "method": {
+              "args": [
+                {
+                  "kind": "class",
+                  "name": "java/lang/CharSequence"
+                },
+                {
+                  "kind": "class",
+                  "name": "java/lang/Iterable"
+                }
+              ],
+              "is_interface": false,
+              "name": "join",
+              "ref": {
+                "kind": "class",
+                "name": "java/lang/String"
+              },
+              "returns": {
+                "kind": "class",
+                "name": "java/lang/String"
+              }
+            },
+            "offset": 31,
+            "opr": "invoke"
+          },
+          {
+            "index": 0,
+            "offset": 34,
+            "opr": "load",
+            "type": "ref"
+          },
+          {
+            "field": {
+              "class": "jpamb/utils/CaseContent",
+              "name": "result",
+              "type": {
+                "kind": "class",
+                "name": "jpamb/utils/CaseContent$ResultType"
+              }
+            },
+            "offset": 35,
+            "opr": "get",
+            "static": false
+          },
+          {
+            "access": "virtual",
+            "method": {
+              "args": [],
+              "name": "toString",
+              "ref": {
+                "kind": "class",
+                "name": "jpamb/utils/CaseContent$ResultType"
+              },
+              "returns": {
+                "kind": "class",
+                "name": "java/lang/String"
+              }
+            },
+            "offset": 38,
+            "opr": "invoke"
+          },
+          {
+            "access": "dynamic",
+            "index": 1,
+            "method": {
+              "args": [
+                {
+                  "kind": "class",
+                  "name": "java/lang/String"
+                },
+                {
+                  "kind": "class",
+                  "name": "java/lang/String"
+                }
+              ],
+              "name": "makeConcatWithConstants",
+              "returns": {
+                "kind": "class",
+                "name": "java/lang/String"
+              }
+            },
+            "offset": 41,
+            "opr": "invoke"
+          },
+          {
+            "offset": 46,
+            "opr": "return",
+            "type": "ref"
+          }
+        ],
+        "exceptions": [],
+        "lines": [
+          {
+            "line": 15,
+            "offset": 0
+          },
+          {
+            "line": 16,
+            "offset": 8
+          }
+        ],
+        "max_locals": 2,
+        "max_stack": 2,
+        "stack_map": null
+      },
+      "default": null,
+      "exceptions": [],
+      "name": "toString",
+      "params": [],
+      "returns": {
+        "annotations": [],
+        "type": {
+          "args": [],
+          "inner": null,
+          "kind": "class",
+          "name": "java/lang/String"
+        }
+      },
+      "typeparams": []
+    },
+    {
+      "access": [
+        "public",
+        "static"
+      ],
+      "annotations": [],
+      "code": {
+        "annotations": [],
+        "bytecode": [
+          {
+            "index": 0,
+            "offset": 0,
+            "opr": "load",
+            "type": "ref"
+          },
+          {
+            "offset": 1,
+            "opr": "instanceof",
+            "type": {
+              "kind": "array",
+              "type": "int"
+            }
+          },
+          {
+            "condition": "eq",
+            "offset": 4,
+            "opr": "ifz",
+            "target": 10
+          },
+          {
+            "index": 0,
+            "offset": 7,
+            "opr": "load",
+            "type": "ref"
+          },
+          {
+            "offset": 8,
+            "opr": "checkcast",
+            "type": {
+              "kind": "array",
+              "type": "int"
+            }
+          },
+          {
+            "access": "static",
+            "method": {
+              "args": [
+                {
+                  "kind": "array",
+                  "type": "int"
+                }
+              ],
+              "is_interface": false,
+              "name": "toString",
+              "ref": {
+                "kind": "class",
+                "name": "java/util/Arrays"
+              },
+              "returns": {
+                "kind": "class",
+                "name": "java/lang/String"
+              }
+            },
+            "offset": 11,
+            "opr": "invoke"
+          },
+          {
+            "offset": 14,
+            "opr": "push",
+            "value": {
+              "type": "integer",
+              "value": 1
+            }
+          },
+          {
+            "access": "virtual",
+            "method": {
+              "args": [
+                "int"
+              ],
+              "name": "substring",
+              "ref": {
+                "kind": "class",
+                "name": "java/lang/String"
+              },
+              "returns": {
+                "kind": "class",
+                "name": "java/lang/String"
+              }
+            },
+            "offset": 15,
+            "opr": "invoke"
+          },
+          {
+            "access": "dynamic",
+            "index": 2,
+            "method": {
+              "args": [
+                {
+                  "kind": "class",
+                  "name": "java/lang/String"
+                }
+              ],
+              "name": "makeConcatWithConstants",
+              "returns": {
+                "kind": "class",
+                "name": "java/lang/String"
+              }
+            },
+            "offset": 18,
+            "opr": "invoke"
+          },
+          {
+            "offset": 23,
+            "opr": "return",
+            "type": "ref"
+          },
+          {
+            "index": 0,
+            "offset": 24,
+            "opr": "load",
+            "type": "ref"
+          },
+          {
+            "offset": 25,
+            "opr": "instanceof",
+            "type": {
+              "kind": "array",
+              "type": "char"
+            }
+          },
+          {
+            "condition": "eq",
+            "offset": 28,
+            "opr": "ifz",
+            "target": 44
+          },
+          {
+            "class": "java/util/ArrayList",
+            "offset": 31,
+            "opr": "new"
+          },
+          {
+            "offset": 34,
+            "opr": "dup",
+            "words": 1
+          },
+          {
+            "access": "special",
+            "method": {
+              "args": [],
+              "is_interface": false,
+              "name": "<init>",
+              "ref": {
+                "kind": "class",
+                "name": "java/util/ArrayList"
+              },
+              "returns": null
+            },
+            "offset": 35,
+            "opr": "invoke"
+          },
+          {
+            "index": 1,
+            "offset": 38,
+            "opr": "store",
+            "type": "ref"
+          },
+          {
+            "index": 0,
+            "offset": 39,
+            "opr": "load",
+            "type": "ref"
+          },
+          {
+            "offset": 40,
+            "opr": "checkcast",
+            "type": {
+              "kind": "array",
+              "type": "char"
+            }
+          },
+          {
+            "index": 2,
+            "offset": 43,
+            "opr": "store",
+            "type": "ref"
+          },
+          {
+            "index": 2,
+            "offset": 44,
+            "opr": "load",
+            "type": "ref"
+          },
+          {
+            "offset": 45,
+            "opr": "arraylength"
+          },
+          {
+            "index": 3,
+            "offset": 46,
+            "opr": "store",
+            "type": "int"
+          },
+          {
+            "offset": 47,
+            "opr": "push",
+            "value": {
+              "type": "integer",
+              "value": 0
+            }
+          },
+          {
+            "index": 4,
+            "offset": 48,
+            "opr": "store",
+            "type": "int"
+          },
+          {
+            "index": 4,
+            "offset": 50,
+            "opr": "load",
+            "type": "int"
+          },
+          {
+            "index": 3,
+            "offset": 52,
+            "opr": "load",
+            "type": "int"
+          },
+          {
+            "condition": "ge",
+            "offset": 53,
+            "opr": "if",
+            "target": 39
+          },
+          {
+            "index": 2,
+            "offset": 56,
+            "opr": "load",
+            "type": "ref"
+          },
+          {
+            "index": 4,
+            "offset": 57,
+            "opr": "load",
+            "type": "int"
+          },
+          {
+            "offset": 59,
+            "opr": "array_load",
+            "type": "char"
+          },
+          {
+            "index": 5,
+            "offset": 60,
+            "opr": "store",
+            "type": "int"
+          },
+          {
+            "index": 1,
+            "offset": 62,
+            "opr": "load",
+            "type": "ref"
+          },
+          {
+            "index": 5,
+            "offset": 63,
+            "opr": "load",
+            "type": "int"
+          },
+          {
+            "access": "dynamic",
+            "index": 3,
+            "method": {
+              "args": [
+                "char"
+              ],
+              "name": "makeConcatWithConstants",
+              "returns": {
+                "kind": "class",
+                "name": "java/lang/String"
+              }
+            },
+            "offset": 65,
+            "opr": "invoke"
+          },
+          {
+            "access": "interface",
+            "method": {
+              "args": [
+                {
+                  "kind": "class",
+                  "name": "java/lang/Object"
+                }
+              ],
+              "name": "add",
+              "ref": {
+                "kind": "class",
+                "name": "java/util/List"
+              },
+              "returns": "boolean"
+            },
+            "offset": 70,
+            "opr": "invoke",
+            "stack_size": 2
+          },
+          {
+            "offset": 75,
+            "opr": "pop",
+            "words": 1
+          },
+          {
+            "amount": 1,
+            "index": 4,
+            "offset": 76,
+            "opr": "incr"
+          },
+          {
+            "offset": 79,
+            "opr": "goto",
+            "target": 25
+          },
+          {
+            "offset": 82,
+            "opr": "push",
+            "value": {
+              "type": "string",
+              "value": ", "
+            }
+          },
+          {
+            "index": 1,
+            "offset": 84,
+            "opr": "load",
+            "type": "ref"
+          },
+          {
+            "access": "static",
+            "method": {
+              "args": [
+                {
+                  "kind": "class",
+                  "name": "java/lang/CharSequence"
+                },
+                {
+                  "kind": "class",
+                  "name": "java/lang/Iterable"
+                }
+              ],
+              "is_interface": false,
+              "name": "join",
+              "ref": {
+                "kind": "class",
+                "name": "java/lang/String"
+              },
+              "returns": {
+                "kind": "class",
+                "name": "java/lang/String"
+              }
+            },
+            "offset": 85,
+            "opr": "invoke"
+          },
+          {
+            "access": "dynamic",
+            "index": 4,
+            "method": {
+              "args": [
+                {
+                  "kind": "class",
+                  "name": "java/lang/String"
+                }
+              ],
+              "name": "makeConcatWithConstants",
+              "returns": {
+                "kind": "class",
+                "name": "java/lang/String"
+              }
+            },
+            "offset": 88,
+            "opr": "invoke"
+          },
+          {
+            "offset": 93,
+            "opr": "return",
+            "type": "ref"
+          },
+          {
+            "index": 0,
+            "offset": 94,
+            "opr": "load",
+            "type": "ref"
+          },
+          {
+            "access": "virtual",
+            "method": {
+              "args": [],
+              "name": "toString",
+              "ref": {
+                "kind": "class",
+                "name": "java/lang/Object"
+              },
+              "returns": {
+                "kind": "class",
+                "name": "java/lang/String"
+              }
+            },
+            "offset": 95,
+            "opr": "invoke"
+          },
+          {
+            "offset": 98,
+            "opr": "return",
+            "type": "ref"
+          }
+        ],
+        "exceptions": [],
+        "lines": [
+          {
+            "line": 20,
+            "offset": 0
+          },
+          {
+            "line": 21,
+            "offset": 3
+          },
+          {
+            "line": 22,
+            "offset": 10
+          },
+          {
+            "line": 23,
+            "offset": 13
+          },
+          {
+            "line": 24,
+            "offset": 17
+          },
+          {
+            "line": 25,
+            "offset": 32
+          },
+          {
+            "line": 24,
+            "offset": 37
+          },
+          {
+            "line": 27,
+            "offset": 39
+          },
+          {
+            "line": 29,
+            "offset": 44
+          }
+        ],
+        "max_locals": 6,
+        "max_stack": 2,
+        "stack_map": [
+          {
+            "index": 10,
+            "type": "same"
+          },
+          {
+            "index": 25,
+            "locals": [
+              {
+                "ref": {
+                  "kind": "class",
+                  "name": "java/lang/Object"
+                },
+                "type": "object"
+              },
+              {
+                "ref": {
+                  "kind": "class",
+                  "name": "java/util/List"
+                },
+                "type": "object"
+              },
+              {
+                "ref": {
+                  "kind": "array",
+                  "type": "char"
+                },
+                "type": "object"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "stack": [],
+            "type": "full_frame"
+          },
+          {
+            "index": 39,
+            "info": 3,
+            "type": "chop_frame"
+          },
+          {
+            "index": 44,
+            "info": 1,
+            "type": "chop_frame"
+          }
+        ]
+      },
+      "default": null,
+      "exceptions": [],
+      "name": "toInputString",
+      "params": [
+        {
+          "annotations": [],
+          "type": {
+            "annotations": [],
+            "args": [],
+            "inner": null,
+            "kind": "class",
+            "name": "java/lang/Object"
+          },
+          "visible": true
+        }
+      ],
+      "returns": {
+        "annotations": [],
+        "type": {
+          "args": [],
+          "inner": null,
+          "kind": "class",
+          "name": "java/lang/String"
+        }
+      },
+      "typeparams": []
+    },
+    {
+      "access": [
+        "public",
+        "static"
+      ],
+      "annotations": [],
+      "code": {
+        "annotations": [],
+        "bytecode": [
+          {
+            "offset": 0,
+            "opr": "push",
+            "value": {
+              "type": "string",
+              "value": "(\\([^)]*\\))\\s*->\\s*(.+)"
+            }
+          },
+          {
+            "access": "static",
+            "method": {
+              "args": [
+                {
+                  "kind": "class",
+                  "name": "java/lang/String"
+                }
+              ],
+              "is_interface": false,
+              "name": "compile",
+              "ref": {
+                "kind": "class",
+                "name": "java/util/regex/Pattern"
+              },
+              "returns": {
+                "kind": "class",
+                "name": "java/util/regex/Pattern"
+              }
+            },
+            "offset": 2,
+            "opr": "invoke"
+          },
+          {
+            "index": 1,
+            "offset": 5,
+            "opr": "store",
+            "type": "ref"
+          },
+          {
+            "index": 1,
+            "offset": 6,
+            "opr": "load",
+            "type": "ref"
+          },
+          {
+            "index": 0,
+            "offset": 7,
+            "opr": "load",
+            "type": "ref"
+          },
+          {
+            "access": "virtual",
+            "method": {
+              "args": [
+                {
+                  "kind": "class",
+                  "name": "java/lang/CharSequence"
+                }
+              ],
+              "name": "matcher",
+              "ref": {
+                "kind": "class",
+                "name": "java/util/regex/Pattern"
+              },
+              "returns": {
+                "kind": "class",
+                "name": "java/util/regex/Matcher"
+              }
+            },
+            "offset": 8,
+            "opr": "invoke"
+          },
+          {
+            "index": 2,
+            "offset": 11,
+            "opr": "store",
+            "type": "ref"
+          },
+          {
+            "index": 2,
+            "offset": 12,
+            "opr": "load",
+            "type": "ref"
+          },
+          {
+            "access": "virtual",
+            "method": {
+              "args": [],
+              "name": "find",
+              "ref": {
+                "kind": "class",
+                "name": "java/util/regex/Matcher"
+              },
+              "returns": "boolean"
+            },
+            "offset": 13,
+            "opr": "invoke"
+          },
+          {
+            "condition": "eq",
+            "offset": 16,
+            "opr": "ifz",
+            "target": 26
+          },
+          {
+            "index": 2,
+            "offset": 19,
+            "opr": "load",
+            "type": "ref"
+          },
+          {
+            "offset": 20,
+            "opr": "push",
+            "value": {
+              "type": "integer",
+              "value": 1
+            }
+          },
+          {
+            "access": "virtual",
+            "method": {
+              "args": [
+                "int"
+              ],
+              "name": "group",
+              "ref": {
+                "kind": "class",
+                "name": "java/util/regex/Matcher"
+              },
+              "returns": {
+                "kind": "class",
+                "name": "java/lang/String"
+              }
+            },
+            "offset": 21,
+            "opr": "invoke"
+          },
+          {
+            "index": 3,
+            "offset": 24,
+            "opr": "store",
+            "type": "ref"
+          },
+          {
+            "index": 2,
+            "offset": 25,
+            "opr": "load",
+            "type": "ref"
+          },
+          {
+            "offset": 26,
+            "opr": "push",
+            "value": {
+              "type": "integer",
+              "value": 2
+            }
+          },
+          {
+            "access": "virtual",
+            "method": {
+              "args": [
+                "int"
+              ],
+              "name": "group",
+              "ref": {
+                "kind": "class",
+                "name": "java/util/regex/Matcher"
+              },
+              "returns": {
+                "kind": "class",
+                "name": "java/lang/String"
+              }
+            },
+            "offset": 27,
+            "opr": "invoke"
+          },
+          {
+            "index": 4,
+            "offset": 30,
+            "opr": "store",
+            "type": "ref"
+          },
+          {
+            "class": "jpamb/utils/CaseContent",
+            "offset": 32,
+            "opr": "new"
+          },
+          {
+            "offset": 35,
+            "opr": "dup",
+            "words": 1
+          },
+          {
+            "index": 3,
+            "offset": 36,
+            "opr": "load",
+            "type": "ref"
+          },
+          {
+            "access": "static",
+            "method": {
+              "args": [
+                {
+                  "kind": "class",
+                  "name": "java/lang/String"
+                }
+              ],
+              "is_interface": false,
+              "name": "parse",
+              "ref": {
+                "kind": "class",
+                "name": "jpamb/utils/InputParser"
+              },
+              "returns": {
+                "kind": "array",
+                "type": {
+                  "kind": "class",
+                  "name": "java/lang/Object"
+                }
+              }
+            },
+            "offset": 37,
+            "opr": "invoke"
+          },
+          {
+            "index": 4,
+            "offset": 40,
+            "opr": "load",
+            "type": "ref"
+          },
+          {
+            "access": "static",
+            "method": {
+              "args": [
+                {
+                  "kind": "class",
+                  "name": "java/lang/String"
+                }
+              ],
+              "is_interface": false,
+              "name": "parse",
+              "ref": {
+                "kind": "class",
+                "name": "jpamb/utils/CaseContent$ResultType"
+              },
+              "returns": {
+                "kind": "class",
+                "name": "jpamb/utils/CaseContent$ResultType"
+              }
+            },
+            "offset": 42,
+            "opr": "invoke"
+          },
+          {
+            "access": "special",
+            "method": {
+              "args": [
+                {
+                  "kind": "array",
+                  "type": {
+                    "kind": "class",
+                    "name": "java/lang/Object"
+                  }
+                },
+                {
+                  "kind": "class",
+                  "name": "jpamb/utils/CaseContent$ResultType"
+                }
+              ],
+              "is_interface": false,
+              "name": "<init>",
+              "ref": {
+                "kind": "class",
+                "name": "jpamb/utils/CaseContent"
+              },
+              "returns": null
+            },
+            "offset": 45,
+            "opr": "invoke"
+          },
+          {
+            "offset": 48,
+            "opr": "return",
+            "type": "ref"
+          },
+          {
+            "class": "java/lang/RuntimeException",
+            "offset": 49,
+            "opr": "new"
+          },
+          {
+            "offset": 52,
+            "opr": "dup",
+            "words": 1
+          },
+          {
+            "index": 0,
+            "offset": 53,
+            "opr": "load",
+            "type": "ref"
+          },
+          {
+            "access": "dynamic",
+            "index": 5,
+            "method": {
+              "args": [
+                {
+                  "kind": "class",
+                  "name": "java/lang/String"
+                }
+              ],
+              "name": "makeConcatWithConstants",
+              "returns": {
+                "kind": "class",
+                "name": "java/lang/String"
+              }
+            },
+            "offset": 54,
+            "opr": "invoke"
+          },
+          {
+            "access": "special",
+            "method": {
+              "args": [
+                {
+                  "kind": "class",
+                  "name": "java/lang/String"
+                }
+              ],
+              "is_interface": false,
+              "name": "<init>",
+              "ref": {
+                "kind": "class",
+                "name": "java/lang/RuntimeException"
+              },
+              "returns": null
+            },
+            "offset": 59,
+            "opr": "invoke"
+          },
+          {
+            "offset": 62,
+            "opr": "throw"
+          }
+        ],
+        "exceptions": [],
+        "lines": [
+          {
+            "line": 35,
+            "offset": 0
+          },
+          {
+            "line": 36,
+            "offset": 3
+          },
+          {
+            "line": 38,
+            "offset": 7
+          },
+          {
+            "line": 39,
+            "offset": 10
+          },
+          {
+            "line": 40,
+            "offset": 14
+          },
+          {
+            "line": 41,
+            "offset": 18
+          },
+          {
+            "line": 43,
+            "offset": 26
+          }
+        ],
+        "max_locals": 5,
+        "max_stack": 4,
+        "stack_map": [
+          {
+            "index": 26,
+            "info": [
+              {
+                "ref": {
+                  "kind": "class",
+                  "name": "java/util/regex/Pattern"
+                },
+                "type": "object"
+              },
+              {
+                "ref": {
+                  "kind": "class",
+                  "name": "java/util/regex/Matcher"
+                },
+                "type": "object"
+              }
+            ],
+            "type": "append_frame"
+          }
+        ]
+      },
+      "default": null,
+      "exceptions": [],
+      "name": "parse",
+      "params": [
+        {
+          "annotations": [],
+          "type": {
+            "annotations": [],
+            "args": [],
+            "inner": null,
+            "kind": "class",
+            "name": "java/lang/String"
+          },
+          "visible": true
+        }
+      ],
+      "returns": {
+        "annotations": [],
+        "type": {
+          "args": [],
+          "inner": null,
+          "kind": "class",
+          "name": "jpamb/utils/CaseContent"
+        }
+      },
+      "typeparams": []
+    },
+    {
+      "access": [
+        "public",
+        "final"
+      ],
+      "annotations": [],
+      "code": {
+        "annotations": [],
+        "bytecode": [
+          {
+            "index": 0,
+            "offset": 0,
+            "opr": "load",
+            "type": "ref"
+          },
+          {
+            "access": "dynamic",
+            "index": 6,
+            "method": {
+              "args": [
+                {
+                  "kind": "class",
+                  "name": "jpamb/utils/CaseContent"
+                }
+              ],
+              "name": "hashCode",
+              "returns": "int"
+            },
+            "offset": 1,
+            "opr": "invoke"
+          },
+          {
+            "offset": 6,
+            "opr": "return",
+            "type": "int"
+          }
+        ],
+        "exceptions": [],
+        "lines": [
+          {
+            "line": 10,
+            "offset": 0
+          }
+        ],
+        "max_locals": 1,
+        "max_stack": 1,
+        "stack_map": null
+      },
+      "default": null,
+      "exceptions": [],
+      "name": "hashCode",
+      "params": [],
+      "returns": {
+        "annotations": [],
+        "type": {
+          "base": "int"
+        }
+      },
+      "typeparams": []
+    },
+    {
+      "access": [
+        "public",
+        "final"
+      ],
+      "annotations": [],
+      "code": {
+        "annotations": [],
+        "bytecode": [
+          {
+            "index": 0,
+            "offset": 0,
+            "opr": "load",
+            "type": "ref"
+          },
+          {
+            "index": 1,
+            "offset": 1,
+            "opr": "load",
+            "type": "ref"
+          },
+          {
+            "access": "dynamic",
+            "index": 6,
+            "method": {
+              "args": [
+                {
+                  "kind": "class",
+                  "name": "jpamb/utils/CaseContent"
+                },
+                {
+                  "kind": "class",
+                  "name": "java/lang/Object"
+                }
+              ],
+              "name": "equals",
+              "returns": "boolean"
+            },
+            "offset": 2,
+            "opr": "invoke"
+          },
+          {
+            "offset": 7,
+            "opr": "return",
+            "type": "int"
+          }
+        ],
+        "exceptions": [],
+        "lines": [
+          {
+            "line": 10,
+            "offset": 0
+          }
+        ],
+        "max_locals": 2,
+        "max_stack": 2,
+        "stack_map": null
+      },
+      "default": null,
+      "exceptions": [],
+      "name": "equals",
+      "params": [
+        {
+          "annotations": [],
+          "type": {
+            "annotations": [],
+            "args": [],
+            "inner": null,
+            "kind": "class",
+            "name": "java/lang/Object"
+          },
+          "visible": true
+        }
+      ],
+      "returns": {
+        "annotations": [],
+        "type": {
+          "base": "boolean"
+        }
+      },
+      "typeparams": []
+    },
+    {
+      "access": [
+        "public"
+      ],
+      "annotations": [],
+      "code": {
+        "annotations": [],
+        "bytecode": [
+          {
+            "index": 0,
+            "offset": 0,
+            "opr": "load",
+            "type": "ref"
+          },
+          {
+            "field": {
+              "class": "jpamb/utils/CaseContent",
+              "name": "params",
+              "type": {
+                "kind": "array",
+                "type": {
+                  "kind": "class",
+                  "name": "java/lang/Object"
+                }
+              }
+            },
+            "offset": 1,
+            "opr": "get",
+            "static": false
+          },
+          {
+            "offset": 4,
+            "opr": "return",
+            "type": "ref"
+          }
+        ],
+        "exceptions": [],
+        "lines": [
+          {
+            "line": 10,
+            "offset": 0
+          }
+        ],
+        "max_locals": 1,
+        "max_stack": 1,
+        "stack_map": null
+      },
+      "default": null,
+      "exceptions": [],
+      "name": "params",
+      "params": [],
+      "returns": {
+        "annotations": [],
+        "type": {
+          "kind": "array",
+          "type": {
+            "annotations": [],
+            "args": [],
+            "inner": null,
+            "kind": "class",
+            "name": "java/lang/Object"
+          }
+        }
+      },
+      "typeparams": []
+    },
+    {
+      "access": [
+        "public"
+      ],
+      "annotations": [],
+      "code": {
+        "annotations": [],
+        "bytecode": [
+          {
+            "index": 0,
+            "offset": 0,
+            "opr": "load",
+            "type": "ref"
+          },
+          {
+            "field": {
+              "class": "jpamb/utils/CaseContent",
+              "name": "result",
+              "type": {
+                "kind": "class",
+                "name": "jpamb/utils/CaseContent$ResultType"
+              }
+            },
+            "offset": 1,
+            "opr": "get",
+            "static": false
+          },
+          {
+            "offset": 4,
+            "opr": "return",
+            "type": "ref"
+          }
+        ],
+        "exceptions": [],
+        "lines": [
+          {
+            "line": 10,
+            "offset": 0
+          }
+        ],
+        "max_locals": 1,
+        "max_stack": 1,
+        "stack_map": null
+      },
+      "default": null,
+      "exceptions": [],
+      "name": "result",
+      "params": [],
+      "returns": {
+        "annotations": [],
+        "type": {
+          "args": [],
+          "inner": {
+            "annotations": [],
+            "args": [],
+            "inner": null,
+            "name": "ResultType"
+          },
+          "kind": "class",
+          "name": "jpamb/utils/CaseContent"
+        }
+      },
+      "typeparams": []
+    }
+  ],
+  "name": "jpamb/utils/CaseContent",
+  "super": {
+    "annotations": [],
+    "args": [],
+    "inner": null,
+    "name": "java/lang/Record"
+  },
+  "typeparams": [],
+  "version": [
+    65,
+    0
+  ]
+}

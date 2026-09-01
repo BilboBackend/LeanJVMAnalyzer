@@ -2,8 +2,6 @@ import LeanJVMAnalyzer.JVMstructs
 import Lean.Log
 
 
-def initinfo : JPAMBInfo := JPAMBInfo.mk "semantics" "1.0" "JSON Bourne" #["lean4", "dynamic","smallcheck"] "true"
-
 abbrev Err := Except String 
 
 structure JVMFrame where 
@@ -21,7 +19,7 @@ instance : Repr JVMFrame where
         let currCode := match frame.code.bytecode[frame.pc]? with 
                     |none => "Program counter out of bounds\n" 
                     |some x => reprStr x ++ "\n" 
-        Std.Format.text (List.foldl (· ++ ·) "" [strStack, strLocals, currCode, strPC]) 
+        Std.Format.text (List.foldl (· ++ ·) "" [strStack, strLocals, currCode, strPC])
  
 namespace JVMFrame 
 
@@ -58,38 +56,17 @@ end JVMFrame
 
 inductive HeapElem where | Arr (a : Array BytecodeValue)| Class (b : BytecodeValue) deriving Repr
 
-structure Heap where 
-    heap : Array HeapElem
-    deriving Repr
-
-def Heap.push (h: Heap) (elem: HeapElem) : Heap × Ref :=
-    let newref : Ref := .Ptr h.heap.size
-    let h' := h.heap.push elem
-    (⟨h'⟩ , newref) 
-
-def Heap.set (h: Heap) (ref: Ref) (elem: HeapElem ) : Err Heap :=
-    match ref with 
-    |.NullPtr => throw "null pointer"
-    |.Ptr r =>
-        let h' := h.heap.set! r elem
-        return ⟨h'⟩ 
-
 structure State where 
-    heap : Heap
+    heap : Array HeapElem
     frames : Array JVMFrame
-
 
 instance : Repr State where 
     reprPrec f _ := 
         let heapfmt := s!"Heap: {reprStr f.heap}\n"
-        let currentframe := 
-            match f.frames[0]? with 
-            |none => "[]"
-            |some frm => reprStr frm
-        let stackframefmt := s!"Frame: \n {currentframe}\n"
+        let currentframe := f.frames[0]?
+        let stackframefmt := s!"Frame: \n {reprStr currentframe}\n"
         Std.Format.text (List.foldl (· ++ ·) "" [heapfmt, stackframefmt])
                                                           
-
 
 namespace State 
 
@@ -103,6 +80,9 @@ def updateStackFrame (frame : JVMFrame) (state : State) : State :=
 
 end State
 
+structure AbstractState where 
+  states : Err State
+
 
 inductive InputValue where | InArray (arr : Array BytecodeValue) | InVal (v : BytecodeValue)
   deriving Repr 
@@ -114,22 +94,22 @@ def initializeInputValue (st : Err State) (input : InputValue) (code : Code): Er
     | some f =>
         match input with 
         |.InArray arr => 
-            let (newheap, newref) := s.heap.push (HeapElem.Arr arr)
-            let newstate := {s with heap := newheap }
-            return newstate.updateStackFrame (f.stackPush ⟨.ValRef newref⟩)
+            let newref := ⟨ValueEnum.ValRef s.heap.size⟩ 
+            let newstate := {s with heap := s.heap.push (HeapElem.Arr arr)}
+            return newstate.updateStackFrame (f.stackPush newref)
         |.InVal v => return s.updateStackFrame {f with locals := #[v] ++ f.locals}
     | none => 
         match input with 
         |.InArray arr => 
-            let (newheap, newref) := s.heap.push (HeapElem.Arr arr)
-            let newframe := JVMFrame.mk [] #[⟨.ValRef newref⟩ ] code 0 none --{f with stack := newref :: f.stack} 
-            return {s with heap := newheap}.updateStackFrame newframe
+            let newref := ⟨ValueEnum.ValRef s.heap.size⟩ 
+            let newframe := JVMFrame.mk [] #[newref] code 0 none --{f with stack := newref :: f.stack} 
+            return {s with heap := s.heap.push (HeapElem.Arr arr)}.updateStackFrame newframe
         |.InVal v => 
             return s.updateStackFrame (JVMFrame.mk [] #[v] code 0 none) --{f with stack := newref :: f.stack}
 
 
 def initializeState (input : Option (List InputValue)) (code : Code) : Err State := 
-    let initstate := State.mk ⟨#[]⟩  #[]
+    let initstate := State.mk #[] #[]
     match input with 
     |some args => 
         List.foldl (fun x y => initializeInputValue x y code) (pure initstate) args
@@ -153,16 +133,11 @@ def extractBytecode (file : JPAMB) (methodname : String) : Except String (Array 
     | none  => throw ("No method with the name: " ++ methodname)
     | some x => pure x.code.bytecode
 
-
-
-/- instance : ToString Ref where  -/
-/-     toString := n.toString -/
-
 def stepPush (s : State) (value: Option BytecodeValue) : Err State := do
     let frame <- s.getFrame 
     match value with 
     | none => 
-        let nullref := ⟨.ValRef .NullPtr⟩ 
+        let nullref :=  ⟨ValueEnum.ValRef 0⟩ 
         return s.updateStackFrame (frame.stackPush nullref).incrpc 
     | some v => 
         return s.updateStackFrame (frame.stackPush v).incrpc
@@ -255,7 +230,7 @@ def simpleArithmetic (v1 : Int) (v2 : Int) (operant : String) : Except String By
     | o => throw s!"Undefined arithmetic operant {o}"
     
 
-def stepBinary (s : State) (_type: BytecodeType) (opr: String)  : Err State := do
+def stepBinary (s : State) (type: BytecodeType) (opr: String)  : Err State := do
     let frame <- s.getFrame 
     match frame.stack with 
     | v2::v1::rest =>  
@@ -268,20 +243,20 @@ def stepBinary (s : State) (_type: BytecodeType) (opr: String)  : Err State := d
     | _ => throw "invalid stack"
 
 
-def stepLoad (s : State) (index: Nat) (_type : BytecodeType) : Err State := do
+def stepLoad (s : State) (index: Nat) (type : BytecodeType) : Err State := do
     let frame <- s.getFrame 
     match frame.locals[index]? with 
     | none => throw "null pointer"
     | some v => return s.updateStackFrame (frame.stackPush v).incrpc
 
 
-def stepStore (s : State) (index: Nat) (_type : BytecodeType) : Err State := do
+def stepStore (s : State) (index: Nat) (type : BytecodeType) : Err State := do
     let frame <- s.getFrame 
     match frame.locals[index]? with 
     | none => 
         let (v,rest) <- frame.stackPop₁ 
         let diff := index - frame.locals.size 
-        let arrend := (Array.replicate diff ⟨.Dummy⟩).push v
+        let arrend := (Array.replicate diff ⟨ValueEnum.Dummy⟩).push v
         let newframe := {rest with locals := frame.locals.append arrend}.incrpc
         return s.updateStackFrame newframe
     | some _ => 
@@ -289,7 +264,7 @@ def stepStore (s : State) (index: Nat) (_type : BytecodeType) : Err State := do
         let newframe := {rest with locals := frame.locals.set! index v}.incrpc
         return s.updateStackFrame newframe 
 
-def stepDup (s : State) (_words : Int) : Err State := do
+def stepDup (s : State) (words : Int) : Err State := do
     let frame <- s.getFrame 
     match frame.stack[0]? with 
     | none => throw "null pointer"
@@ -297,10 +272,10 @@ def stepDup (s : State) (_words : Int) : Err State := do
 
 def stepNew (s : State)  («class»: String) : Err State := do
     let frame <- s.getFrame 
-    let newval := HeapElem.Class ⟨.ValClass ⟨.Class,  «class»⟩⟩  
-    let (newHeap,newRef) := s.heap.push newval
-    let newstate := s.updateStackFrame (frame.stackPush ⟨.ValRef newRef⟩ ).incrpc
-    return {newstate with heap := newHeap}
+    let newref := ⟨ValueEnum.ValRef (s.heap.size)⟩ 
+    let newstate := s.updateStackFrame (frame.stackPush newref).incrpc
+    let newval := HeapElem.Class ⟨ValueEnum.ValClass ⟨.Class,  «class»⟩⟩  
+    return {newstate with heap := newstate.heap.push newval}
 
 def stepInvoke (s : State) (code : JPAMB) (access : BytecodeAccess) (method : BytecodeMethod): Err State := do
     let frame <- s.getFrame 
@@ -326,88 +301,36 @@ def stepInvoke (s : State) (code : JPAMB) (access : BytecodeAccess) (method : By
 
 
 def createDummyArray (n : Nat) : Array BytecodeValue := 
-  Array.replicate n ⟨.Dummy⟩
+  Array.replicate n ⟨ValueEnum.Dummy⟩
 
-def stepNewArray (s : State) (_type : BytecodeType) (_dim : Nat) : Err State := do
+def stepNewArray (s : State) (type : BytecodeType) (dim : Nat) : Err State := do
     let frame <- s.getFrame 
     match frame.stack[0]? with 
     | some bcv => 
         match bcv.value with 
         |.ValInt i => 
-            let newArray := HeapElem.Arr (createDummyArray i.toNat) --should it be dim here?
-            let (newHeap, newRef) := s.heap.push newArray
-            let newframe := frame.stackPush ⟨.ValRef newRef⟩ |> .incrpc
-            return {s with heap := newHeap}.updateStackFrame newframe 
+            let newref := ⟨ValueEnum.ValRef s.heap.size⟩ 
+            let newarray := HeapElem.Arr (createDummyArray i.toNat) --should it be dim here?
+            let newframe := frame.stackPush newref |> .incrpc
+            return {s with heap := s.heap.push newarray}.updateStackFrame newframe 
         |_ => throw "Count for NewArray must be an integer"
     | none => throw s!"No count defined for NewArray"
 
-instance {α : Type*} [LinearOrder α] : LinearOrder (Option α) where
-  le_refl := by grind [Option]
-  le_trans := by grind [Option]
-  le_antisymm := by grind [Option]
-  le_total := by grind [Option]
-  toDecidableLE
-    | some a, some b => decidable_of_bool (a ≤ b) (by simp)
-    | some _, none => decidable_of_bool false (by simp)
-    | none, _ => decidable_of_bool true (by simp)
-  min_def := by grind [Option]
-  max_def := by grind [Option]
-  lt_iff_le_not_ge := by grind [Option]
-  compare_eq_compareOfLessAndEq a b := by
-    rcases a with _ | a <;> rcases b with _ | b <;> simp_all [compare, compareOfLessAndEq]
-    grind [compare, compare_lt_iff_lt, compare_gt_iff_gt]
 
-theorem Ref.toNat_inj : Function.Injective Ref.toNat := by 
-   intro a b h
-   cases a
-   . cases b 
-     . rfl
-     simp [toNat] at h
-   cases b 
-   . simp [toNat] at h
-   simp [toNat] at h
-   subst_eqs
-   rfl
-    
+def updateHeapArray (s : State) (ref : Nat) (index : Int) (value : BytecodeValue) : Err State :=
+    match s.heap[ref]? with 
+    | none => throw "null pointer"
+    | some h => 
+        match h with 
+        |.Class _ => throw "Trying to access non-array heap value" 
+        |.Arr arr => 
+            match arr[index.toNat]? with 
+            | none => throw s!"out of bounds" --, index: {index}, size: {arr.size}" 
+            | some _ => 
+                let newarr := HeapElem.Arr <| arr.set! index.toNat value
+                pure {s with heap := s.heap.set! ref newarr }--s.heap.setIfInBounds ref newarr} 
 
-instance : LinearOrder Ref := LinearOrder.lift' Ref.toNat Ref.toNat_inj --inferInstanceAs (LT Nat)
-
-def Ref.elim {α : Type*} (r : Ref) (elem : α) (f : ℕ → α) := 
-    r.toNat.elim elem f
-
-instance : GetElem Heap Ref HeapElem (fun h i => i.elim false (· < h.heap.size)) where
-      getElem h i h_bounds :=
-      match hi : i with 
-      |.NullPtr => False.elim (by grind [Ref.elim, Ref.toNat]) 
-      |.Ptr r => h.heap[r]'(by grind [Ref.elim, Ref.toNat])
-
-instance : GetElem? Heap Ref HeapElem (fun h i => i.elim false (· < h.heap.size)) where
-  getElem? h i := 
-    match i with 
-    | .NullPtr => none
-    | .Ptr ir => h.heap[ir]?
-
-
-def updateHeapArray (s : State) (ref : Ref) (index : Int) (value : BytecodeValue) : Err State :=
-    match ref with 
-    |.NullPtr => throw "null pointer"
-    |.Ptr _ =>
-      match s.heap[ref]? with 
-      | none => throw "out of bounds"
-      | some h => 
-          match h with 
-          |.Class _ => throw "Trying to access non-array heap value" 
-          |.Arr arr => 
-              match arr[index.toNat]? with 
-              | none => throw s!"out of bounds" --, index: {index}, size: {arr.size}" 
-              | some _ => 
-                  let newarr := HeapElem.Arr <| arr.set! index.toNat value
-                  let newheap := s.heap.set ref newarr
-                  match newheap with 
-                  |.error e => throw e
-                  |.ok nh => pure {s with heap := nh}
-
-def stepArrayStore (s : State) (_type : BytecodeType) : Err State := do
+def stepArrayStore (s : State) (type : BytecodeType) : Err State := do
     let (val, index, arrayref, rest) <- (← s.getFrame).stackPop₃ 
     match (arrayref.value,index.value) with 
     | (.ValRef r, .ValInt i) => updateHeapArray (s.updateStackFrame rest.incrpc) r i val
@@ -417,16 +340,16 @@ def stepArrayLength (s : State) : Err State := do
     let frame <- s.getFrame 
     let (arrayref,rest) <- frame.stackPop₁ 
     match arrayref.value with 
-    | .ValRef r => 
+    | ValueEnum.ValRef r => 
         match s.heap[r]? with 
         | none => throw "null pointer"
         | some (HeapElem.Arr arr) => 
-            let length :=  ⟨.ValInt  arr.size.toInt64.toInt⟩ 
+            let length :=  ⟨ValueEnum.ValInt  arr.size.toInt64.toInt⟩ 
             return s.updateStackFrame (rest.stackPush length).incrpc 
         | some _ => throw "Not a valid array reference"
     |_ => throw "Not a valid reference in ArrayLength"
 
-def stepArrayLoad (s : State) (_type : BytecodeType) : Err State := do
+def stepArrayLoad (s : State) (type : BytecodeType) : Err State := do
     let frame <- s.getFrame 
     let (index,arrayref,rest) <- frame.stackPop₂ 
     match (arrayref.value,index.value) with 
@@ -451,10 +374,10 @@ def stepIncr (s : State) (index : Nat) (amount : Int): Err State := do
             return s.updateStackFrame {frame with locals := frame.locals.set! index incrval}.incrpc 
         | _ => throw "Can only increment Int"
 
-def stepCast (s : State) (_froM : KindEnum) (_toKind : KindEnum): Err State := do
+def stepCast (s : State) (froM : KindEnum) (_ : KindEnum): Err State := do
     return s.updateStackFrame (← s.getFrame).incrpc 
  
-def stepNegate (s : State) (_type: BytecodeType): Err State := do
+def stepNegate (s : State) (type: BytecodeType): Err State := do
     let frame <- s.getFrame
     let (val,xs) <- frame.stackPop₁
     match val.value with 
@@ -463,7 +386,7 @@ def stepNegate (s : State) (_type: BytecodeType): Err State := do
         pure <| s.updateStackFrame (xs.stackPush (newval)).incrpc
     | err => throw s!"Tried to negate incompatible value {reprStr err}"
    
-def step (st : Err State) (code : JPAMB) : Err State := do
+def abstractStep (st : AbstractState) (code : JPAMB) : Std.TreeMap Int AbstractState := 
     let s <- st
     if s.frames.isEmpty 
     then throw "ok"
@@ -491,7 +414,40 @@ def step (st : Err State) (code : JPAMB) : Err State := do
         | .ArrayLength _ => stepArrayLength s 
         | .ArrayLoad _ type => stepArrayLoad s type
         | .Incr _ index amount => stepIncr s index amount
-        | .Cast _ fromKind toKind => stepCast s fromKind toKind
+        | .Cast _ froM to => stepCast s froM to
+        | .Negate _ type => stepNegate s type
+        | stp => throw ("Undefined step: " ++ (reprStr stp))
+ 
+def manyStep (astates : Std.TreeMap Int AbstractState) (code : JPAMB) : Std.TreeMap Int AbstractState := 
+    astates.foldl step
+    let s <- st
+    if s.frames.isEmpty 
+    then throw "ok"
+    else 
+    let frame <- s.getFrame 
+    match frame.status with 
+    |some _ => pure s 
+    |none => 
+        let bc <- frame.bc
+        match bc with 
+        | .Push _ value => stepPush s value
+        | .Ifz _ cond target => stepIfz s cond target
+        | .If _ cond target => stepIf s cond target
+        | .Goto _ target => stepGoto s target
+        | .Get _ static field => stepGet s static field
+        | .Return _ type => stepReturn s type
+        | .Binary _ type operant => stepBinary s type operant
+        | .Load _ index type => stepLoad s index type
+        | .Store _ index type => stepStore s index type
+        | .Dup _ words => stepDup s words
+        | .New _ clAss => stepNew s clAss
+        | .Invoke _ access method => stepInvoke s code access method
+        | .NewArray _ type dim => stepNewArray s type dim
+        | .ArrayStore _ type => stepArrayStore s type
+        | .ArrayLength _ => stepArrayLength s 
+        | .ArrayLoad _ type => stepArrayLoad s type
+        | .Incr _ index amount => stepIncr s index amount
+        | .Cast _ froM to => stepCast s froM to
         | .Negate _ type => stepNegate s type
         | stp => throw ("Undefined step: " ++ (reprStr stp))
     
@@ -525,7 +481,7 @@ def stepWOffset (st : Err (Nat × State)) (code : JPAMB) : Err (Nat × State) :=
             | .ArrayLength _ => stepArrayLength s 
             | .ArrayLoad _ type => stepArrayLoad s type
             | .Incr _ index amount => stepIncr s index amount
-            | .Cast _ fromKind toKind => stepCast s fromKind toKind
+            | .Cast _ froM to => stepCast s froM to
             | stp => throw ("Undefined step: " ++ (reprStr stp))
         let offset := bc.offset
         return (offset,state)
@@ -539,7 +495,6 @@ def interpret (state : Err State) (code : JPAMB) (counter : Nat) : Err String :=
         |.ok st => interpret (step state code) code (counter - 1) 
         |.error e => throw e
     else throw "*"
-
 
 
 
