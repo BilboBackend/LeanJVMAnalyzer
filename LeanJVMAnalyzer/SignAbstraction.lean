@@ -157,7 +157,7 @@ def neqSign (s1 : Sign) (s2: Sign) : Finset Bool :=
     |(.Neg,.Pos) 
     |(_,_) => {true}
 
-def compareHelp (cond: Condition)(s1: Sign) (s2: Sign) : Finset Bool :=
+def compareHelp (cond: Condition) (s1: Sign) (s2: Sign) : Finset Bool :=
     match cond with 
     | .Ne => neqSign s1 s2 
     | .Eq => eqSign s1 s2
