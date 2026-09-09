@@ -50,7 +50,7 @@ def evaluateMethod (method : Method) (input : Option (List InputValue)) (logging
     return res
 
 def scoreResults (results : List (Except String String)) (is_void_method : Bool): ErrorGuess := 
-    let std_score := if is_void_method then "0" else "50"
+    let std_score := if is_void_method then "not-found" else "maybe"
     let init_score := standardScore std_score
     if is_void_method
     then List.foldl (fun curr_score res => updateScore curr_score res) init_score results
@@ -106,8 +106,8 @@ def runAbstract (method : Method) (logging : Bool) : IO Unit := do
     let results :=
         match method.argtypes with  
         |"[I"
-        |"[C" => pure []
-        |"" => inputs.mapM (fun inputstr => evaluateMethod method inputstr logging)
+        |"[C" -- => pure []
+        |"" 
         |_ => inputs.mapM (fun inputstr => evaluateMethod method inputstr logging)
     IO.println <| reprStr <| scoreResults (← results) is_void
 

@@ -22,19 +22,7 @@
       "value": null
     }
   ],
-  "innerclasses": [
-    {
-      "access": [
-        "public",
-        "static",
-        "final",
-        "enum"
-      ],
-      "class": "jpamb/utils/Tag$TagType",
-      "name": "TagType",
-      "outer": "jpamb/utils/Tag"
-    }
-  ],
+  "innerclasses": [],
   "interfaces": [],
   "methods": [
     {
@@ -75,7 +63,7 @@
         "exceptions": [],
         "lines": [
           {
-            "line": 7,
+            "line": 5,
             "offset": 0
           }
         ],
@@ -113,7 +101,7 @@
                     "values": {
                       "value": {
                         "type": "string",
-                        "value": "(0) -> assertion error"
+                        "value": "(s'hello') -> ok"
                       }
                     }
                   }
@@ -125,29 +113,8 @@
                     "values": {
                       "value": {
                         "type": "string",
-                        "value": "(24) -> ok"
+                        "value": "(s'not hello') -> assertion error"
                       }
-                    }
-                  }
-                }
-              ]
-            }
-          }
-        },
-        {
-          "is_runtime_visible": true,
-          "type": "jpamb/utils/Tag",
-          "values": {
-            "value": {
-              "type": "array",
-              "value": [
-                {
-                  "type": "enum",
-                  "value": {
-                    "name": "LOOP",
-                    "type": {
-                      "kind": "class",
-                      "name": "jpamb/utils/Tag$TagType"
                     }
                   }
                 }
@@ -161,7 +128,7 @@
         "bytecode": [
           {
             "field": {
-              "class": "jpamb/cases/Tricky",
+              "class": "jpamb/cases/Strings",
               "name": "$assertionsDisabled",
               "type": "boolean"
             },
@@ -173,27 +140,54 @@
             "condition": "ne",
             "offset": 3,
             "opr": "ifz",
-            "target": 8
+            "target": 10
           },
           {
             "index": 0,
             "offset": 6,
             "opr": "load",
-            "type": "int"
+            "type": "ref"
           },
           {
-            "condition": "gt",
             "offset": 7,
+            "opr": "push",
+            "value": {
+              "type": "string",
+              "value": "hello"
+            }
+          },
+          {
+            "access": "virtual",
+            "method": {
+              "args": [
+                {
+                  "kind": "class",
+                  "name": "java/lang/Object"
+                }
+              ],
+              "name": "equals",
+              "ref": {
+                "kind": "class",
+                "name": "java/lang/String"
+              },
+              "returns": "boolean"
+            },
+            "offset": 9,
+            "opr": "invoke"
+          },
+          {
+            "condition": "ne",
+            "offset": 12,
             "opr": "ifz",
-            "target": 8
+            "target": 10
           },
           {
             "class": "java/lang/AssertionError",
-            "offset": 10,
+            "offset": 15,
             "opr": "new"
           },
           {
-            "offset": 13,
+            "offset": 18,
             "opr": "dup",
             "words": 1
           },
@@ -209,137 +203,15 @@
               },
               "returns": null
             },
-            "offset": 14,
+            "offset": 19,
             "opr": "invoke"
           },
           {
-            "offset": 17,
+            "offset": 22,
             "opr": "throw"
           },
           {
-            "index": 0,
-            "offset": 18,
-            "opr": "load",
-            "type": "int"
-          },
-          {
-            "offset": 19,
-            "opr": "push",
-            "value": {
-              "type": "integer",
-              "value": 1
-            }
-          },
-          {
-            "condition": "eq",
-            "offset": 20,
-            "opr": "if",
-            "target": 27
-          },
-          {
-            "index": 0,
             "offset": 23,
-            "opr": "load",
-            "type": "int"
-          },
-          {
-            "offset": 24,
-            "opr": "push",
-            "value": {
-              "type": "integer",
-              "value": 2
-            }
-          },
-          {
-            "offset": 25,
-            "operant": "rem",
-            "opr": "binary",
-            "type": "int"
-          },
-          {
-            "condition": "ne",
-            "offset": 26,
-            "opr": "ifz",
-            "target": 20
-          },
-          {
-            "index": 0,
-            "offset": 29,
-            "opr": "load",
-            "type": "int"
-          },
-          {
-            "offset": 30,
-            "opr": "push",
-            "value": {
-              "type": "integer",
-              "value": 2
-            }
-          },
-          {
-            "offset": 31,
-            "operant": "div",
-            "opr": "binary",
-            "type": "int"
-          },
-          {
-            "index": 0,
-            "offset": 32,
-            "opr": "store",
-            "type": "int"
-          },
-          {
-            "offset": 33,
-            "opr": "goto",
-            "target": 8
-          },
-          {
-            "index": 0,
-            "offset": 36,
-            "opr": "load",
-            "type": "int"
-          },
-          {
-            "offset": 37,
-            "opr": "push",
-            "value": {
-              "type": "integer",
-              "value": 3
-            }
-          },
-          {
-            "offset": 38,
-            "operant": "mul",
-            "opr": "binary",
-            "type": "int"
-          },
-          {
-            "offset": 39,
-            "opr": "push",
-            "value": {
-              "type": "integer",
-              "value": 1
-            }
-          },
-          {
-            "offset": 40,
-            "operant": "add",
-            "opr": "binary",
-            "type": "int"
-          },
-          {
-            "index": 0,
-            "offset": 41,
-            "opr": "store",
-            "type": "int"
-          },
-          {
-            "offset": 42,
-            "opr": "goto",
-            "target": 8
-          },
-          {
-            "offset": 45,
             "opr": "return",
             "type": null
           }
@@ -347,56 +219,35 @@
         "exceptions": [],
         "lines": [
           {
-            "line": 13,
+            "line": 10,
             "offset": 0
           },
           {
-            "line": 14,
-            "offset": 8
-          },
-          {
-            "line": 15,
-            "offset": 11
-          },
-          {
-            "line": 16,
-            "offset": 15
-          },
-          {
-            "line": 18,
-            "offset": 20
-          },
-          {
-            "line": 21,
-            "offset": 27
+            "line": 11,
+            "offset": 10
           }
         ],
         "max_locals": 1,
         "max_stack": 2,
         "stack_map": [
           {
-            "index": 8,
-            "type": "same"
-          },
-          {
-            "index": 20,
-            "type": "same"
-          },
-          {
-            "index": 27,
+            "index": 10,
             "type": "same"
           }
         ]
       },
       "default": null,
       "exceptions": [],
-      "name": "collatz",
+      "name": "sayHello",
       "params": [
         {
           "annotations": [],
           "type": {
             "annotations": [],
-            "base": "int"
+            "args": [],
+            "inner": null,
+            "kind": "class",
+            "name": "java/lang/String"
           },
           "visible": true
         }
@@ -422,7 +273,7 @@
               "type": "class",
               "value": {
                 "kind": "class",
-                "name": "jpamb/cases/Tricky"
+                "name": "jpamb/cases/Strings"
               }
             }
           },
@@ -469,7 +320,7 @@
           },
           {
             "field": {
-              "class": "jpamb/cases/Tricky",
+              "class": "jpamb/cases/Strings",
               "name": "$assertionsDisabled",
               "type": "boolean"
             },
@@ -486,7 +337,7 @@
         "exceptions": [],
         "lines": [
           {
-            "line": 7,
+            "line": 5,
             "offset": 0
           }
         ],
@@ -517,7 +368,7 @@
       "typeparams": []
     }
   ],
-  "name": "jpamb/cases/Tricky",
+  "name": "jpamb/cases/Strings",
   "super": {
     "annotations": [],
     "args": [],

@@ -310,6 +310,7 @@ def getValue (b : BytecodeValueA α) : Err (InnerValue α) :=
     | .ValChar c => pure (.val c)
     | .ValBool b => pure (.val b)
     | .ValShort i => pure (.val i)
+    | .ValString s => do throw "Tried to get value of string"
     | .ValClass c => do throw "Tried to get value of class"
     | .Dummy => do throw "Tried to get value of dummy" 
  
@@ -320,14 +321,7 @@ def genericArithmetic (b1 b2 : BytecodeValueA α) (operant : String) : Err (List
     let values ←
     match v1,v2 with 
     | .ref vi1, .ref vi2 =>
-        throw "pointer arithmetic!!!"
-        /- match operant with  -/
-        /- | "add" => return [⟨.ValRef (vi1 + vi2)⟩] -/
-        /- | "sub" => return [⟨.ValRef (vi1 - vi2)⟩] -/
-        /- | "mul" => return [⟨.ValRef (vi1 * vi2)⟩] -/
-        /- | "rem" => return [⟨.ValRef (vi1 % vi2)⟩] -/
-        /- | "div" => if 0 == vi2 then throw "divide by zero" else return [⟨.ValRef (vi1 / vi2)⟩] -/
-        /- | o => throw s!"Undefined arithmetic operant {o}" -/
+        throw "Pointer arithmetic not supported!!!"
     | .val vi1, .val vi2 =>
         match operant with 
         | "add" => return (Arithmetic.toList (vi1 +ₐ vi2)).map (fun v => ⟨.ValInt v⟩)
@@ -347,7 +341,7 @@ def abstractStepBinary (s : Stateful α β) (type: BytecodeType) (opr: String)  
         |.ok values => 
             return values.map (fun v => s.updateStackFrame ({frame with stack := rest}.stackPush v |> .incrpc))
         |.error e => throw e
-    | _ => throw "invalid stack"
+    | _ => throw "Invalid stack"
 
 
 def abstractStepLoad (s : Stateful α β) (index: Nat) (type : BytecodeType) : ErrASt α β := do

@@ -228,6 +228,7 @@ def abstractSign (bc : BytecodeValue) : BytecodeValueA Sign :=
     |.ValShort i => ⟨.ValShort (signFromInt i)⟩ 
     |.ValRef i => ⟨.ValRef i⟩ 
     |.Dummy  => ⟨.Dummy⟩ 
+    |.ValString s => ⟨.ValString s⟩
     |.ValClass s => ⟨.ValClass s⟩
  
 def signSetContains (bc: BytecodeValue) (signset : SignSet) : Bool :=

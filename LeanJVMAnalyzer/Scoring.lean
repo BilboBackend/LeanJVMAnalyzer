@@ -5,10 +5,16 @@ open Lean
 structure ErrorGuess where 
     values : Std.HashMap String String
 
+def score_list_to_string (sl : List String ) : String :=
+  match sl with 
+  |[] => ""
+  |[x] => x
+  |x::xs => x ++ "\n" ++ (score_list_to_string xs)
+
 instance : Repr ErrorGuess where 
     reprPrec eg _ :=
-        let scores := List.map (fun k => k ++ ";" ++ eg.values[k]! ++"%") eg.values.keys 
-        Std.Format.text <| List.foldl (· ++ · ++ "\n") "" scores
+        let scores := List.map (fun k => k ++ ";" ++ eg.values[k]!) eg.values.keys 
+        Std.Format.text <| score_list_to_string scores
 
 def standardScore (val : String): ErrorGuess := 
     let hmap := Std.HashMap.emptyWithCapacity 6
@@ -18,7 +24,7 @@ def standardScore (val : String): ErrorGuess :=
 def updateScoreVoid (scores : ErrorGuess) (st : Except String String) : ErrorGuess :=
     match st with 
     |.error s
-    |.ok s =>  ErrorGuess.mk <| scores.values.insert s "100"
+    |.ok s =>  ErrorGuess.mk <| scores.values.insert s "found"
  
 
 def updateScore (scores : ErrorGuess) (st : Except String String) : ErrorGuess :=
@@ -26,25 +32,25 @@ def updateScore (scores : ErrorGuess) (st : Except String String) : ErrorGuess :
     |.error s
     |.ok s => 
         match s with 
-        |"null pointer" => ErrorGuess.mk <| scores.values.insert s "100"
-        |"out of bounds" => ErrorGuess.mk <| scores.values.insert s "100"
-        |"ok" => ErrorGuess.mk <| scores.values.insert s "90" 
-        |"*" => ErrorGuess.mk <| scores.values.insert s "75"
-        |"assertion error" => ErrorGuess.mk <| scores.values.insert s "100"
-        |"divide by zero" => ErrorGuess.mk <| scores.values.insert s "100"
+        |"null pointer" => ErrorGuess.mk <| scores.values.insert s "found"
+        |"out of bounds" => ErrorGuess.mk <| scores.values.insert s "found"
+        |"ok" => ErrorGuess.mk <| scores.values.insert s "maybe-found" 
+        |"*" => ErrorGuess.mk <| scores.values.insert s "maybe-found"
+        |"assertion error" => ErrorGuess.mk <| scores.values.insert s "found"
+        |"divide by zero" => ErrorGuess.mk <| scores.values.insert s "found"
         |_ => scores
      
 
 
 
 /--
-info: out of bounds;50%
-null pointer;50%
-ok;50%
-*;50%
-assertion error;100%
-divide by zero;100%
+info: out of bounds;not-found
+null pointer;not-found
+ok;not-found
+*;not-found
+assertion error;found
+divide by zero;found
 -/
 #guard_msgs in 
-#eval [(.error "divide by zero"), (.error "assertion error")].foldl updateScore (standardScore "50")
+#eval [(.error "divide by zero"), (.error "assertion error")].foldl updateScore (standardScore "not-found")
 

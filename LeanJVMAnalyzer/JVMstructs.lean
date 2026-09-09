@@ -51,7 +51,7 @@ instance instFromJsonCondition : FromJson Condition where
   fromJson? := conditionFromJson
 
 
-inductive KindEnum where | Class | Ref | KindInt | KindChar | KindBool | KindCharArr | KindIntArr | KindBoolArr | KindShort | Dummy
+inductive KindEnum where | Class | Ref | KindInt | KindChar | KindBool | KindCharArr | KindIntArr | KindBoolArr | KindShort | Dummy | KindString
      deriving ToJson, Repr, BEq
 
 
@@ -64,6 +64,7 @@ def kindEnumFromJson (j : Json) : Except String KindEnum :=
     | "short" => pure KindEnum.KindShort
     | "class" => pure KindEnum.Class
     | "ref" => pure KindEnum.Ref
+    | "string" => pure KindEnum.KindString
     | e => throw s!"Unknown kind: {e}"
 
 instance instFromJsonKindEnum : FromJson KindEnum where
@@ -101,6 +102,7 @@ instance : ToString Ref where
 
 inductive ValueEnumA (α : Type*)  where
     | ValClass (c : RefClass)
+    | ValString (s : String)
     | ValRef (i : Ref)
     | ValInt (i : α)
     | ValChar (c : α)
@@ -116,7 +118,10 @@ def ValueEnumFromJson (j : Json) : Except String ValueEnum :=
     | .ok i => .ok (.ValInt i)
     | .error _ => match (FromJson.fromJson? j : Except _ RefClass) with
                     | .ok rc => .ok (.ValClass rc)
-                    | .error e => throw s!"Failed to parse bytecode {e}"
+                    | .error _ => 
+                        match (FromJson.fromJson? j : Except _ String) with
+                        |.ok s => .ok (.ValString s) 
+                        |.error e => throw s!"Failed to parse bytecode {e}"
 
 instance instFromJsonValueEnum : FromJson ValueEnum where
   fromJson? := ValueEnumFromJson
@@ -290,24 +295,9 @@ def BytecodeValueFromJson (j : Json) : Except String BytecodeValue := do
     |(KindEnum.KindChar, .ValInt i) => pure ⟨.ValChar i⟩
     |(KindEnum.KindShort, .ValInt i) => pure ⟨.ValShort i⟩
     |(KindEnum.Ref, .ValInt i) => pure ⟨.ValRef (.Ptr i.toNat)⟩ 
+    |(KindEnum.KindString, .ValString s) => pure ⟨.ValString s⟩
     |(KindEnum.Class, .ValClass c) => pure ⟨.ValClass c⟩
     |(ek,ev) => throw s!"Failed to instantiate BytecodeVal from {reprStr ek} and {reprStr ev}"
-
-
-    /- match j.getObjVal? "value" >>= fun o => o.getInt? with  -/
-    /- |.ok value =>  -/
-    /-     match type with -/
-    /-     | "integer" => pure ⟨ValueEnum.ValInt value⟩ -/
-    /-     | "int" => pure ⟨ValueEnum.ValInt value⟩ -/
-    /-     | "char" => pure ⟨ValueEnum.ValChar value⟩ -/
-    /-     | "boolean" => pure ⟨ValueEnum.ValBool value⟩ -/
-    /-     | "short" => pure ⟨ValueEnum.ValShort value⟩ -/
-    /-     | "ref" => pure ⟨ValueEnum.ValRef value.toNat⟩ -/
-    /-     | e => throw s!"Failed to parse bytecode {e}" -/
-    /- |.error _ =>  -/
-    /-     match (FromJson.fromJson? j : Except _ RefClass) with  -/
-    /-     | .ok rc => pure ⟨ValueEnum.ValClass rc⟩  -/
-    /-     | .error e => throw s!"Failed to parse bytecode {e}" -/
 
 instance instFromJsonBytecodeValue : FromJson BytecodeValue where
     fromJson? := BytecodeValueFromJson
@@ -322,21 +312,39 @@ instance : Repr BytecodeValue where
       let val := bc.value
       Std.Format.text (reprStr val)
 
-
 structure  BytecodeField where
      «class»: String
      name : String
      type : Base
      deriving ToJson, FromJson, Repr
 
+structure VirtualArgs where 
+     kind: KindEnum
+     name: String 
+     deriving ToJson, FromJson, Repr
+
+inductive BytecodeArgs where | StaticArgs (s : String) | VirtualArgs (va : VirtualArgs)
+     deriving ToJson, Repr
+
+instance : FromJson BytecodeArgs where
+  fromJson? json :=
+    match json with
+    | Json.str s =>
+        pure (.StaticArgs s)
+    | Json.obj _ =>
+        do
+          let arg ← fromJson? json
+          pure (.VirtualArgs arg)
+    | _ =>
+        throw "Expected a String or VirtualArgs object"
+
 structure  BytecodeMethod where
-     args : Array String
+     args : Array BytecodeArgs 
      is_interface : Option Bool
      name : String --BName
      ref : RefClass
      returns : Option Json --Base
      deriving ToJson, FromJson, Repr
-
 
 
 inductive Operation where
@@ -599,6 +607,63 @@ instance : Repr JPAMBInfo where
 
 
 --------- Guards -------------
+
+def staticmethod := Json.parse r#"{
+              "args": [
+                "boolean"
+              ],
+              "is_interface": false,
+              "name": "assertIf",
+              "ref": {
+                "kind": "class",
+                "name": "jpamb/cases/Calls"
+              },
+              "returns": null
+            }"#
+/--
+info: Except.ok { args := #[BytecodeArgs.StaticArgs "boolean"],
+  is_interface := some false,
+  name := "assertIf",
+  ref := { kind := KindEnum.Class, name := "jpamb/cases/Calls" },
+  returns := none }
+-/
+#guard_msgs in
+#eval do return (FromJson.fromJson? (← IO.ofExcept staticmethod) : Except _ BytecodeMethod)
+
+
+def stringobj := Json.parse r#"{
+              "args": [
+                {
+                  "kind": "class",
+                  "name": "java/lang/Object"
+                }
+              ],
+              "name": "equals",
+              "ref": {
+                "kind": "class",
+                "name": "java/lang/String"
+              },
+              "returns": "boolean"
+            }"#
+/--
+info: Except.ok { args := #[BytecodeArgs.VirtualArgs { kind := KindEnum.Class, name := "java/lang/Object" }],
+  is_interface := none,
+  name := "equals",
+  ref := { kind := KindEnum.Class, name := "java/lang/String" },
+  returns := some InnerClassType }
+-/
+#guard_msgs in 
+#eval do return  (FromJson.fromJson? (← IO.ofExcept stringobj) : Except _ BytecodeMethod) 
+
+
+def string1 := Json.parse r#"{
+              "type": "string",
+              "value": "hello"
+            }"#
+/-- info: Except.ok ValueEnumA.ValString "hello" -/
+#guard_msgs in
+#eval do return  (FromJson.fromJson? (← IO.ofExcept string1) : Except _ BytecodeValue) 
+
 
 def fieldtype1 := Json.parse r#"{"base": "int"}"#
 /-- info: Except.ok { annotations := none, base := some (Base.BaseInt) } -/

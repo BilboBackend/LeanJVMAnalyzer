@@ -25,8 +25,15 @@ def parseChar (s : String) : Option BytecodeValue :=
         |true => some ⟨.ValChar c.toNat⟩ 
         |false => none
 
+def parseString (s : String) : Option BytecodeValue :=
+    if !s.startsWith "s'" || !s.endsWith "'" 
+    then none 
+    else  
+        let inner := s.drop 2 |>.dropRight 1
+        some ⟨.ValString inner⟩ 
+        
 def parseValue (s : String) : Option BytecodeValue := 
-    parseBool s <|> parseInt s <|> parseChar s
+    parseBool s <|> parseInt s <|> parseChar s <|> parseString s
 
 def splitTopLevel (s : String) (sep : Char) (open_ : Char) (close : Char) : List String :=
     let rec loop (cs : List Char) (acc : List String) (curr : List Char) (depth : Nat) :=
@@ -61,6 +68,7 @@ def parseArray (s: String) : Option (Array BytecodeValue):=
 
 
 
+
 def parseType (s : String) : Option InputValue := 
     match (parseArray s, parseValue s) with 
     | (some x, _) => some <| .InArray x
@@ -85,6 +93,9 @@ def parseInput (s: String) : Option (List InputValue) :=
             List.foldlM (fun x y => y >>= fun k => k :: x) [] cvals 
         else none
 
+/-- info: some [InputValue.InVal ValueEnumA.ValString "helloworld"] -/
+#guard_msgs in 
+#eval parseInput "(s'hello world')"
 /--
 info: some [InputValue.InArray #[ValueEnumA.ValInt 1, ValueEnumA.ValInt 2], InputValue.InVal ValueEnumA.ValInt 1]
 -/
